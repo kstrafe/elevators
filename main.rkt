@@ -1,7 +1,9 @@
 #! /usr/bin/env racket
 #lang racket
 
-[require threading] ; This is for the ~> and ~>> operators, and has nothing to do with parallel threads
+[require
+  lens ; Allows "mutation" in a functional manner
+  threading] ; This is for the ~> and ~>> operators, and has nothing to do with parallel threads
 
 ;; Useful functions
 [define (not-empty list)
@@ -11,7 +13,8 @@
   [last rest]]
 
 ;; The state each elevator contains
-[struct state (position waypoints external-buttons internal-buttons resting-position) #:prefab]
+;; We use struct/lens (provided by `lens' to automatically implement lenses for all fields
+[struct/lens state (position waypoints external-buttons internal-buttons resting-position) #:prefab]
 
 ;; Ensure all elevators have the same external-buttons state
 [define (correct-buttons all-known-elevator-states)
@@ -21,10 +24,13 @@
   ;; Remove all numeric duplicates in O(n^2) time
   [define (remove-duplicates list)
     [foldr [lambda [number state] [cons number [filter [lambda [z] [not [= number z]]] state]]] empty list]]
-  [~>>
-    [map state-external-buttons all-known-elevator-states]
-    merge-lists
-    remove-duplicates]]
+  [let ([new-button-state
+      [~>
+        [map state-external-buttons all-known-elevator-states]
+        merge-lists
+        remove-duplicates]])
+    [map [lambda (elevator) [lens-set state-external-buttons-lens elevator new-button-state]]
+      all-known-elevator-states]]]
 
 ;; Remove floors (buttons) which we can confirm have been cleared by an elevator
 [define (prune-buttons all-known-elevator-states)
@@ -32,7 +38,7 @@
     [error "Function not yet implemented"]]]
 
 ;; Map external buttons into waypoints
-[define (assign-mission all-known-elevator-states
+[define (assign-mission all-known-elevator-states)
   [let ([s all-known-elevator-states])
     [error "Function not yet implemented"]]]
 
@@ -40,7 +46,8 @@
 [define example-states [list
                          [state 0 '[] '[1 3] '[] 0]
                          [state 0 '[] '[] '[] 0]
-                         [state 0 '[] '[9] '[] 0]
+                         [state 3 '[] '[9] '[] 0]
                          [state 0 '[] '[9 8 8 8 3] '[] 0]
                          [state 5 '[] '[1]   '[] 5]]]
 [correct-buttons example-states]
+
