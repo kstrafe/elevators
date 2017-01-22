@@ -1,0 +1,12 @@
+#! /usr/bin/env racket
+#lang racket
+
+[require racket/udp]
+
+[define socket [udp-open-socket]]
+[define service-port 45638]
+[udp-bind! socket #f service-port]
+[udp-send-to socket "stravers.net" service-port #""]
+[let ([net-buffer [make-bytes 1024]])
+	[let-values ([(size address port) [udp-receive! socket net-buffer]])
+		[displayln [bytes->string/utf-8 [subbytes net-buffer 0 size]]]]]
