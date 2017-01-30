@@ -56,33 +56,3 @@
   (get-floor-sensor-signal (_fun -> _int))
   (get-stop-signal (_fun -> _int))
   (get-obstruction-signal (_fun -> _int))]
-
-[define-syntax (example syn)
-  [displayln [syntax->string syn]]
-  #'[void]]
-
-[define-syntax-rule (inaction (id signature) ...)
-  [begin
-    [define id 120] ...]]
-
-[inaction (newb (_fun -> kek)) (dewb 0)]
-[displayln newb]
-[displayln dewb]
-
-[example what (_fun nice ->)]
-
-#|
-  syntax-source
-  syntax-line
-  syntax-column
-  syntax->e
-  syntax->list
-  syntax->datum
-  datum->syntax
-
-  begin-for-syntax
-  define-for-syntax
-
-  syntax-case
-  define-syntax-rule
-|#
