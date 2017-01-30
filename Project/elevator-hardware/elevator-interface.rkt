@@ -55,3 +55,9 @@
   (get-floor-sensor-signal (_fun -> _int))
   (get-stop-signal (_fun -> _int))
   (get-obstruction-signal (_fun -> _int))]
+
+[elevator-hardware-init]
+[let loop ()
+  [elevator-hardware-set-floor-indicator 3]
+  [sleep 0.1]
+  [loop]]
