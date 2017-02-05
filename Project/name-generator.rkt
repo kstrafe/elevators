@@ -1,5 +1,7 @@
 #lang racket
 
+(provide generate-name)
+
 (define names
   (list "Abraxas"
         "Abbadon"
@@ -223,9 +225,4 @@
     (list-ref names (random len))))
 
 (define (generate-name)
-  (let ([first (select-random-name)])
-    (if (> .5 (random))
-      first
-      (string-append first " " (select-random-name)))))
-
-(provide generate-name)
+  (string-append (select-random-name) " " (select-random-name)))
