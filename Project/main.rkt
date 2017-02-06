@@ -7,8 +7,11 @@
 (define (write-identity filepath)
   (let ([id (uuid-generate)]
         [name (generate-name)])
-    (with-output-to-file filepath
-      (lambda () (write (list id name) )))
+    (with-handlers ([exn:fail:filesystem?
+                      (lambda (e)
+                        (displayln "file not writable"))])
+      (with-output-to-file filepath
+        (lambda () (write (list id name)))))
     (values id name)))
 
 (define (generate-identity)
