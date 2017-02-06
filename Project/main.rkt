@@ -10,8 +10,7 @@
       (with-handlers ([exn:fail:filesystem?
                         (lambda (e)
                           (displayln "file not readable")
-                          (delete-file filepath)
-                          (generate-identity))])
+                          (values (uuid-generate) (generate-name)))])
         (with-input-from-file filepath
           (lambda () (apply values (file->value filepath)))))
       (let ([id (uuid-generate)]
