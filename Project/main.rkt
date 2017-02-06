@@ -13,11 +13,11 @@
                           (delete-file filepath)
                           (generate-identity))])
         (with-input-from-file filepath
-          (lambda () (apply values (file->lines filepath)))))
+          (lambda () (apply values (file->value filepath)))))
       (let ([id (uuid-generate)]
             [name (generate-name)])
         (with-output-to-file filepath
-          (lambda () (printf (string-join (list id name) "\n"))))
+          (lambda () (write (list id name) )))
         (values id name)))))
 
 (define-values (id name) (generate-identity))
