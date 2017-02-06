@@ -4,3 +4,6 @@
 # VIM: Swap-files
 [._]*.s[a-w][a-z]
 [._]s[a-w][a-z]
+
+# Project: UUID and name files
+_elevator-uuid
