@@ -238,4 +238,4 @@
     (list-ref names (random len))))
 
 (define (generate-name)
-  (string-append (select-random-name) " " (select-random-name)))
+  (string-join (list (select-random-name) (select-random-name))))
