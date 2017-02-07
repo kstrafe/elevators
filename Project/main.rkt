@@ -3,12 +3,15 @@
 
 (require racket/pretty
          "identity-generator.rkt"
-         "network/network.rkt")
+         "network/network.rkt"
+         "utilities.rkt")
 
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)
 
 (define-values (id name) (generate-identity))
+
+(dbug id name)
 
 (let loop ([my-friends empty])
   (send `((string-append "Hi! My name is " ,name ", I'm also known as " ,id) ,id ,name ,(current-inexact-milliseconds)))
