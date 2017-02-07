@@ -19,7 +19,7 @@
 (udp-bind! udp-channel #f broadcast-port)
 
 (define (receive)
-  (let ([input-buffer (make-bytes 1024)])
+  (let ([input-buffer (make-bytes 65535)])
     (let-values ([(message-length source-host source-port) (udp-receive!* udp-channel input-buffer)])
       (if message-length
         (cons (fasl->s-exp input-buffer) (receive))
