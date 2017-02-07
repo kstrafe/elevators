@@ -5,13 +5,9 @@
          "name-generator.rkt")
 
 (define (generate-identity)
-  (with-handlers ([exn:fail:filesystem?
+  (with-handlers ([exn?
                     (lambda (e)
-                      (displayln "filesystem error")
-                      (values (uuid-generate) (generate-name)))]
-                  [exn:fail:read?
-                    (lambda (e)
-                      (displayln "file to value error")
+                      (displayln "error during filehandling")
                       (values (uuid-generate) (generate-name)))])
     (let ([filepath "_elevator-uuid"])
       (if (file-exists? filepath)
