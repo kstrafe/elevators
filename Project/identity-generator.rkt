@@ -1,6 +1,8 @@
 #lang racket
 
-(provide generate-name)
+(provide generate-identity)
+
+(require libuuid)
 
 (define names
   (list "Abbadon"
@@ -259,3 +261,18 @@
 
 (define (generate-name)
   (string-join (list (select-random-name) (select-random-name))))
+
+(define (generate-identity)
+  (with-handlers ([exn?
+                    (lambda (e)
+                      (displayln "error during filehandling")
+                      (values (uuid-generate) (generate-name)))])
+    (let ([filepath "_elevator-uuid"])
+      (if (file-exists? filepath)
+        (with-input-from-file filepath
+          (lambda () (apply values (file->value filepath))))
+        (let ([id (uuid-generate)]
+              [name (generate-name)])
+          (with-output-to-file filepath
+            (lambda () (write (list id name))))
+          (values id name))))))
