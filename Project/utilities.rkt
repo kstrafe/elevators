@@ -2,10 +2,12 @@
 
 (provide trce dbug info warn erro crit ftal)
 
+(require racket/pretty)
+
 (define-syntax-rule (generate-loggers type ...)
   (begin
     (... (define-syntax-rule (type expr ...)
            (begin
-             (writeln `(,(string->symbol (format "~a:" (symbol->string 'type))) expr = ,expr)) ...))) ...))
+             (pretty-write `(,(string->symbol (format "~a:" (symbol->string 'type))) expr = ,expr) (current-error-port)) ...))) ...))
 
 (generate-loggers trce dbug info warn erro crit ftal)

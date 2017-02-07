@@ -1,8 +1,7 @@
 #! /usr/bin/env racket
 #lang racket
 
-(require racket/pretty
-         "identity-generator.rkt"
+(require "identity-generator.rkt"
          "network/network.rkt"
          "utilities.rkt")
 
@@ -13,12 +12,13 @@
 
 (dbug id name)
 
-(let loop ([my-friends empty])
+(let loop ([my-friends (hash id (list name))])
   (send `((string-append "Hi! My name is " ,name ", I'm also known as " ,id) ,id ,name ,(current-inexact-milliseconds)))
-  (pretty-print
+  (sleep 1)
+  (trce my-friends)
+  (trce
     (for/list ([message (receive)])
       (match message
         [(list _ id name time) (string-append "Yaaayy! Welcome " name " of " id " t=" (number->string time))]
         [_ (displayln "Unknown message :( I'm scared")])))
-  (sleep 1)
   (loop empty))
