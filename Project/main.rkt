@@ -8,6 +8,10 @@
   (with-handlers ([exn:fail:filesystem?
                     (lambda (e)
                       (displayln "filesystem error")
+                      (values (uuid-generate) (generate-name)))]
+                  [exn:fail:read?
+                    (lambda (e)
+                      (displayln "file to value error")
                       (values (uuid-generate) (generate-name)))])
     (let ([filepath "_elevator-uuid"])
       (if (file-exists? filepath)
