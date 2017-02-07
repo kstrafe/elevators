@@ -2,6 +2,7 @@
 #lang racket
 
 (require lens
+         threading
          "identity-generator.rkt"
          "network/network.rkt"
          "utilities.rkt")
@@ -9,20 +10,25 @@
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)
 
+(struct/lens elevator-state (id name position) #:prefab)
+(struct/lens elevator-attributes (state time-to-live timestamp) #:prefab)
+
 (define-values (id name) (generate-identity))
+
+(define state (elevator-state id name 0))
 
 (dbug id name)
 
-(struct/lens elevator-state (name position) #:prefab)
-(struct/lens elevator-attributes (state time-to-live timestamp) #:prefab)
-
-(let loop ([my-friends (hash id (elevator-attributes (elevator-state name 0) 3 (current-inexact-milliseconds)))])
-  (send `((string-append "Hi! My name is " ,name ", I'm also known as " ,id) ,id ,name ,(current-inexact-milliseconds)))
+(let loop ([my-friends (make-immutable-hash `([,id . ,(elevator-attributes state 3 (current-inexact-milliseconds))]))])
+  (send state)
   (sleep 1)
-  (trce my-friends)
-  (trce
-    (for/list ([message (receive)])
-      (match message
-        [(list _ id name time) (string-append "Yaaayy! Welcome " name " of " id " t=" (number->string time))]
-        [_ (displayln "Unknown message :( I'm scared")])))
-  (loop my-friends))
+  (let ([messages (receive)])
+    (trce messages)
+    (~>
+      (foldl (lambda (x s) (hash-set s x (lens-transform elevator-attributes-time-to-live-lens (hash-ref s x) sub1)))
+             my-friends
+             (hash-keys my-friends))
+      (foldl (lambda (x s) (hash-set s (elevator-state-id x) (elevator-attributes x 3 (current-inexact-milliseconds))))
+             _
+             messages)
+      (loop))))
