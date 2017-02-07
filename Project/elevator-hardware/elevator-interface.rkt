@@ -16,9 +16,9 @@
 
 (require ffi/unsafe ; We require ffi (foreign function interface) to call C libraries
          (for-syntax racket/list ; Requirements for syntax transformers
+                     racket/string
                      racket/syntax
-                     syntax/to-string
-                     racket/string))
+                     syntax/to-string))
 
 ;; Load the elevator hardware library
 (define driver (ffi-lib "./libelevator-hardware"))
@@ -40,9 +40,9 @@
     (datum->syntax syn out))
 
 (define-syntax (elevator-hardwares syn)
-  (let* ([list-of-arguments (rest (syntax->datum syn)])
+  (let* ([list-of-arguments (rest (syntax->datum syn))])
          (defines (for/list ((argument list-of-arguments)) `(elevator-hardware ,(first argument) ,(second argument)))))
-    (datum->syntax syn `(begin ,@defines))))
+    (datum->syntax syn `(begin ,@defines)))
 
 ;; Create all C bindings
 (elevator-hardwares
