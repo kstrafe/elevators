@@ -13,6 +13,9 @@
 (struct/lens elevator-state (id name position) #:prefab)
 (struct/lens elevator-attributes (state time-to-live timestamp) #:prefab)
 
+(define (elevator-attributes-refresh attributes)
+  (elevator-attributes (elevator-attributes-state attributes) time-to-live (current-inexact-milliseconds)))
+
 (define-values (id name) (generate-identity))
 
 (define state (elevator-state id name 0))
@@ -43,8 +46,7 @@
   (send state)
   (sleep 1)
   (let ([messages (receive)])
-    ; (trce messages)
-    (trce my-friends)
+    ; (trce my-friends)
     (~>
       ;; Decrement all 'time-to-live's
       (map-hash-table my-friends (lambda (x)
@@ -53,6 +55,9 @@
       ;; Reset 'time-to-live' for the elevators from which we received a message
       (hash-set-from-list _ elevator-state-id in: messages update-with: (lambda (msg)
         (elevator-attributes msg time-to-live (current-inexact-milliseconds))))
+
+      ;; Refresh time-to-live and timestamp for ourselves
+      ((lambda (x) (hash-set x id (elevator-attributes-refresh (hash-ref x id)))))
 
       ;; Remove all elevators where time-to-live <= 0
       (hash-remove-predicate (lambda (x) (<= (elevator-attributes-time-to-live x) 0)))
