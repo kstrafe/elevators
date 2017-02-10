@@ -19,15 +19,24 @@
 (define udp-channel (udp-open-socket))
 (udp-bind! udp-channel #f broadcast-port)
 
+(define (hash-check-passes message)
+  (bytes=? (hashify (first message)) (second message)))
+
 (define (receive)
   (let ([input-buffer (make-bytes 65535)])
     (let-values ([(message-length source-host source-port) (udp-receive!* udp-channel input-buffer)])
       (if message-length
-        (cons (fasl->s-exp input-buffer) (receive))
+        (let ([message (fasl->s-exp input-buffer)])
+          (dbug message)
+          ;; Drop packages that doesn't pass hash-check
+          (if (hash-check-passes message)
+            (cons (first message) (receive))
+            (receive)))
         empty))))
 
 (define (send info)
-  (async-channel-put sender-channel (list info (hashify info))))
+  (let ([message (list info (current-inexact-milliseconds))])
+    (send* (list message (hashify message)))))
 
 (define (send* info)
   (async-channel-put sender-channel info))
