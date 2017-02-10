@@ -66,8 +66,8 @@
               (map (curryr set-and-send floor) elevator-hardware-button-list (list state-up state-down state-command)))
             (when stop?
               (trce `("Set stop lamp to" ,stop?))
-              (async-channel-put button-channel '(stop))
-              (elevator-hardware-set-stop-lamp 1))
+              (elevator-hardware-set-stop-lamp 1)
+              (async-channel-put button-channel '(stop)))
             (if (and (positive? floor) (not (= floor previous-floor)))
               (begin
                 (trce `("Set floor lamp to" ,floor))

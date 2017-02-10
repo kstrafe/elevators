@@ -22,17 +22,16 @@
   elevator-hardware-open-door
   elevator-hardware-close-door)
 
+(require ffi/unsafe ; We require ffi (foreign function interface) to call C libraries
+         racket/runtime-path
+         (for-syntax racket/list racket/string racket/syntax syntax/to-string)) ; Requirements for syntax transformers
+
 (define (elevator-hardware-open-door) (elevator-hardware-set-door-open-lamp 1))
 (define (elevator-hardware-close-door) (elevator-hardware-set-door-open-lamp 0))
 
-(require ffi/unsafe ; We require ffi (foreign function interface) to call C libraries
-         (for-syntax racket/list ; Requirements for syntax transformers
-                     racket/string
-                     racket/syntax
-                     syntax/to-string))
-
 ;; Load the elevator hardware library
-(define driver (ffi-lib (simplify-path (build-path (syntax-source #'here) 'up "libelevator-hardware"))))
+(define-runtime-path library "libelevator-hardware")
+(define driver (ffi-lib library))
 
 ;; Define the enumerations used by the library
 (define elevator-hardware-motor-direction (_enum '(DIRN_DOWN = -1 DIRN_STOP DIRN_UP)))
@@ -69,4 +68,4 @@
   (get-stop-signal (_fun -> _int))
   (get-obstruction-signal (_fun -> _int)))
 
-;(elevator-hardware-init)
+; (elevator-hardware-init)
