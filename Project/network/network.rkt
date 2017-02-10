@@ -5,7 +5,8 @@
 
 (require racket/async-channel
          racket/serialize
-         racket/fasl)
+         racket/fasl
+         "../utilities.rkt")
 
 (define broadcast-address
   (let-values ([(p o i e)
@@ -26,6 +27,9 @@
         empty))))
 
 (define (send info)
+  (async-channel-put sender-channel (list info (hashify info))))
+
+(define (send* info)
   (async-channel-put sender-channel info))
 
 (define sender-thread (thread (lambda ()

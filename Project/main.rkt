@@ -2,8 +2,6 @@
 #lang racket
 
 (require lens
-         racket/fasl
-         sha
          threading
          "identity-generator.rkt"
          "network/network.rkt"
@@ -24,9 +22,6 @@
 (define time-to-live 3)
 
 (dbug id name)
-
-(define (hashify message)
-  (sha256 (s-exp->fasl message)))
 
 ;; Map each value in a hash-table (hash fn . -> . hash)
 (define (map-hash-table hash function)
@@ -50,7 +45,7 @@
 (let loop ([my-friends (make-immutable-hash `([,id . ,(elevator-attributes state time-to-live (current-inexact-milliseconds))]))])
   (let ([message (list state (current-inexact-milliseconds))])
     (dbug message)
-    (send (list message (hashify message))))
+    (send message))
   (sleep 1)
   (let ([messages (receive)])
     ;(trce my-friends)
