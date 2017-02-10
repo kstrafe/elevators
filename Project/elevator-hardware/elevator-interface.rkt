@@ -12,7 +12,18 @@
   elevator-hardware-get-button-signal
   elevator-hardware-get-floor-sensor-signal
   elevator-hardware-get-stop-signal
-  elevator-hardware-get-obstruction-signal)
+  elevator-hardware-get-obstruction-signal
+
+  elevator-hardware-motor-direction
+  elevator-hardware-button-type
+
+  elevator-hardware-button-list
+
+  elevator-hardware-open-door
+  elevator-hardware-close-door)
+
+(define (elevator-hardware-open-door) (elevator-hardware-set-door-open-lamp 1))
+(define (elevator-hardware-close-door) (elevator-hardware-set-door-open-lamp 0))
 
 (require ffi/unsafe ; We require ffi (foreign function interface) to call C libraries
          (for-syntax racket/list ; Requirements for syntax transformers
@@ -21,11 +32,12 @@
                      syntax/to-string))
 
 ;; Load the elevator hardware library
-(define driver (ffi-lib "./libelevator-hardware"))
+(define driver (ffi-lib (simplify-path (build-path (syntax-source #'here) 'up "libelevator-hardware"))))
 
 ;; Define the enumerations used by the library
 (define elevator-hardware-motor-direction (_enum '(DIRN_DOWN = -1 DIRN_STOP DIRN_UP)))
-(define elevator-hardware-button-type (_enum '(BUTTON_CALL_UP = 0 BUTTON_CALL_DOWN BUTTON_COMMAND)))
+(define elevator-hardware-button-list '(BUTTON_CALL_UP BUTTON_CALL_DOWN BUTTON_COMMAND))
+(define elevator-hardware-button-type (_enum elevator-hardware-button-list))
 
 ;; Macros that generate the foreign function interface
 (define-syntax (elevator-hardware syn)
@@ -36,13 +48,13 @@
     `(define ,(format-symbol "elevator-hardware-~a" name)
       (get-ffi-obj ,(string-append "elev_" (string-replace (symbol->string name) "-" "_"))
         driver ,signature
-        (lambda () (error 'ffi-error ,(format "Unable to link to symbol ~a" (symbol->string name))))))]))
-    (datum->syntax syn out))
+        (lambda () (error 'ffi-error ,(format "Unable to link to symbol ~a" (symbol->string name))))))])
+    (datum->syntax syn out)))
 
 (define-syntax (elevator-hardwares syn)
-  (let* ([list-of-arguments (rest (syntax->datum syn))])
-         (defines (for/list ((argument list-of-arguments)) `(elevator-hardware ,(first argument) ,(second argument)))))
-    (datum->syntax syn `(begin ,@defines)))
+  (let* ([list-of-arguments (rest (syntax->datum syn))]
+         [defines (for/list ((argument list-of-arguments)) `(elevator-hardware ,(first argument) ,(second argument)))])
+    (datum->syntax syn `(begin ,@defines))))
 
 ;; Create all C bindings
 (elevator-hardwares
@@ -56,3 +68,5 @@
   (get-floor-sensor-signal (_fun -> _int))
   (get-stop-signal (_fun -> _int))
   (get-obstruction-signal (_fun -> _int)))
+
+;(elevator-hardware-init)
