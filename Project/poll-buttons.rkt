@@ -1,11 +1,20 @@
 #lang racket
 
-(provide poll-buttons)
+(provide pop-button-states)
 
-(require "elevator-hardware/elevator-interface.rkt"
+(require racket/async-channel
+         "elevator-hardware/elevator-interface.rkt"
          "utilities.rkt")
 
 (define floor-count 4)
+
+(define button-channel (make-async-channel))
+
+(define (pop-button-states)
+  (let ([button (async-channel-try-get button-channel)])
+    (if button
+      (cons button (pop-button-states))
+      empty)))
 
 (define poll-buttons (thread (lambda ()
   (let loop ([previous-floor 0]
@@ -34,18 +43,22 @@
                 [state-down buttons-down]
                 [state-command buttons-command]
                 [floor floor-count])
-            (when (= state-up 1) (elevator-hardware-set-button-lamp 'BUTTON_CALL_UP floor state-up))
-            (when (= state-down 1) (elevator-hardware-set-button-lamp 'BUTTON_CALL_DOWN floor state-down))
-            (when (= state-command 1) (elevator-hardware-set-button-lamp 'BUTTON_COMMAND floor state-command)))
+            (when (= state-up 1)
+              (async-channel-put button-channel `(BUTTON_CALL_UP ,floor ,state-up))
+              (elevator-hardware-set-button-lamp 'BUTTON_CALL_UP floor state-up))
+            (when (= state-down 1)
+              (async-channel-put button-channel `(BUTTON_CALL_DOWN ,floor ,state-down))
+              (elevator-hardware-set-button-lamp 'BUTTON_CALL_DOWN floor state-down))
+            (when (= state-command 1)
+              (async-channel-put button-channel `(BUTTON_CALL_DOWN ,floor ,state-command))
+              (elevator-hardware-set-button-lamp 'BUTTON_COMMAND floor state-command)))
           (when (= stop? 1)
             (trce `("Set stop lamp to" ,stop?))
+            (async-channel-put button-channel `(stop ,stop?))
             (elevator-hardware-set-stop-lamp 1))
           (if (and (positive? floor) (not (= floor previous-floor)))
             (begin
               (trce `("Set floor lamp to" ,floor))
               (elevator-hardware-set-floor-indicator floor)
               (loop floor #t))
-            (loop previous-floor #t)))
-      ))))))
-
-(sleep 100)
+            (loop previous-floor #t)))))))))
