@@ -15,9 +15,9 @@
 
 (define (generate-identity)
   (with-handlers ([exn?
-                    (lambda (e)
-                      (displayln e)
-                      (values (uuid-generate) (generate-name)))])
+    (lambda (e)
+      (displayln e)
+      (values (uuid-generate) (generate-name)))])
     (let ([filepath "identity"])
       (if (file-exists? filepath)
         (with-input-from-file filepath
