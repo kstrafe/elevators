@@ -15,7 +15,15 @@
   elevator-hardware-get-obstruction-signal
 
   elevator-hardware-motor-direction
-  elevator-hardware-button-type)
+  elevator-hardware-button-type
+
+  elevator-hardware-button-list
+
+  elevator-hardware-open-door
+  elevator-hardware-close-door)
+
+(define (elevator-hardware-open-door) (elevator-hardware-set-door-open-lamp 1))
+(define (elevator-hardware-close-door) (elevator-hardware-set-door-open-lamp 0))
 
 (require ffi/unsafe ; We require ffi (foreign function interface) to call C libraries
          (for-syntax racket/list ; Requirements for syntax transformers
@@ -28,7 +36,8 @@
 
 ;; Define the enumerations used by the library
 (define elevator-hardware-motor-direction (_enum '(DIRN_DOWN = -1 DIRN_STOP DIRN_UP)))
-(define elevator-hardware-button-type (_enum '(BUTTON_CALL_UP = 0 BUTTON_CALL_DOWN BUTTON_COMMAND)))
+(define elevator-hardware-button-list '(BUTTON_CALL_UP BUTTON_CALL_DOWN BUTTON_COMMAND))
+(define elevator-hardware-button-type (_enum elevator-hardware-button-list))
 
 ;; Macros that generate the foreign function interface
 (define-syntax (elevator-hardware syn)
