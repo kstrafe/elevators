@@ -7,3 +7,8 @@
 
 # Project: UUID and name files
 identity
+
+elev.o
+io.o
+cloc
+libelevator-hardware.so*
