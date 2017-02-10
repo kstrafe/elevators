@@ -2,6 +2,8 @@
 #lang racket
 
 (require lens
+         racket/fasl
+         sha
          threading
          "identity-generator.rkt"
          "network/network.rkt"
@@ -23,6 +25,9 @@
 
 (dbug id name)
 
+(define (hashify message)
+  (sha256 (s-exp->fasl message)))
+
 ;; Map each value in a hash-table (hash fn . -> . hash)
 (define (map-hash-table hash function)
   (foldl (lambda (x s) (hash-set s x (function (hash-ref s x)))) hash (hash-keys hash)))
@@ -30,7 +35,7 @@
 (define-syntax hash-set-from-list
   (syntax-rules (in: update-with:)
     [(_ hash accessor in: list update-with: function)
-      (foldl (lambda (x s) (hash-set s (accessor x) (function x)))
+      (foldl (lambda (x s) (hash-set s (accessor (first (first x))) (function (first (first x)))))
         hash
         list)]))
 
@@ -43,23 +48,29 @@
     (hash-keys hash)))
 
 (let loop ([my-friends (make-immutable-hash `([,id . ,(elevator-attributes state time-to-live (current-inexact-milliseconds))]))])
-  (send state)
+  (let ([message (list state (current-inexact-milliseconds))])
+    (dbug message)
+    (send (list message (hashify message))))
   (sleep 1)
   (let ([messages (receive)])
-    ; (trce my-friends)
-    (~>
-      ;; Decrement all 'time-to-live's
-      (map-hash-table my-friends (lambda (x)
-        (lens-transform elevator-attributes-time-to-live-lens x sub1)))
+    ;(trce my-friends)
+    (trce messages)
 
-      ;; Reset 'time-to-live' for the elevators from which we received a message
-      (hash-set-from-list _ elevator-state-id in: messages update-with: (lambda (msg)
-        (elevator-attributes msg time-to-live (current-inexact-milliseconds))))
+    ;; Drop packages that doesn't pass hash-check
+    (let ([passed-messages (filter list? messages)])
+      (~>
+        ;; Decrement all 'time-to-live's
+        (map-hash-table my-friends (lambda (x)
+          (lens-transform elevator-attributes-time-to-live-lens x sub1)))
 
-      ;; Refresh time-to-live and timestamp for ourselves
-      ((lambda (x) (hash-set x id (elevator-attributes-refresh (hash-ref x id)))))
+        ;; Reset 'time-to-live' for the elevators from which we received a message
+        (hash-set-from-list _ elevator-state-id in: passed-messages update-with: (lambda (msg)
+          (elevator-attributes msg time-to-live (current-inexact-milliseconds))))
 
-      ;; Remove all elevators where time-to-live <= 0
-      (hash-remove-predicate (lambda (x) (<= (elevator-attributes-time-to-live x) 0)))
+        ;; Refresh time-to-live and timestamp for ourselves
+        ((lambda (x) (hash-set x id (elevator-attributes-refresh (hash-ref x id)))))
 
-      (loop))))
+        ;; Remove all elevators where time-to-live <= 0
+        (hash-remove-predicate (lambda (x) (<= (elevator-attributes-time-to-live x) 0)))
+
+        (loop)))))
