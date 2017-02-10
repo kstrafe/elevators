@@ -5,6 +5,7 @@
          threading
          "identity-generator.rkt"
          "network/network.rkt"
+         "poll-buttons.rkt"
          "utilities.rkt")
 
 ;; Ensure that we use the incremental garbage collector
