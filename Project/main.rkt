@@ -33,11 +33,10 @@
   (let* ([button-presses (pop-button-states)]
          [commands (filter (lambda (x) (eq? (first x) 'command)) button-presses)]
          [ins (foldl (lambda (c s) (lens-transform elevator-state-internal-requests-lens s (lambda (x) (cons c x)))) state commands)])
-    (dbug ins))
+    ins)
   (let ([messages (map first (receive))])
     ;(trce my-friends)
     ;(trce messages)
-
     (~>
       ;; Decrement all 'time-to-live's
       (map-hash-table my-friends (lambda (x)
