@@ -26,12 +26,15 @@
   (let ([input-buffer (make-bytes 65535)])
     (let-values ([(message-length source-host source-port) (udp-receive!* udp-channel input-buffer)])
       (if message-length
-        (let ([message (fasl->s-exp input-buffer)])
-          ;(dbug message)
-          ;; Drop packages that doesn't pass hash-check
-          (if (hash-check-passes message)
-            (cons (first message) (receive))
-            (receive)))
+        (with-handlers ([exn?
+                          (lambda (e)
+                            (receive))])
+          (let ([message (fasl->s-exp input-buffer)])
+            ;(dbug message)
+            ;; Drop packages that doesn't pass hash-check
+            (if (hash-check-passes message)
+              (cons (first message) (receive))
+              (receive))))
         empty))))
 
 (define (send info)
