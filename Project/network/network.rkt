@@ -27,7 +27,7 @@
     (let-values ([(message-length source-host source-port) (udp-receive!* udp-channel input-buffer)])
       (if message-length
         (let ([message (fasl->s-exp input-buffer)])
-          (dbug message)
+          ;(dbug message)
           ;; Drop packages that doesn't pass hash-check
           (if (hash-check-passes message)
             (cons (first message) (receive))

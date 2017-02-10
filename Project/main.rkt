@@ -27,7 +27,7 @@
 (info id name)
 
 (let loop ([my-friends (make-immutable-hash `([,id . ,(elevator-attributes state time-to-live (current-inexact-milliseconds))]))])
-  (dbug state)
+  ;(dbug state)
   (send state)
   (sleep 1)
   (let* ([button-presses (pop-button-states)]
@@ -36,7 +36,7 @@
     (dbug ins))
   (let ([messages (map first (receive))])
     ;(trce my-friends)
-    (trce messages)
+    ;(trce messages)
 
     (~>
       ;; Decrement all 'time-to-live's
