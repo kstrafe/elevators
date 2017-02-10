@@ -14,11 +14,10 @@
   (elevator-attributes (elevator-attributes-state attributes) time-to-live (current-inexact-milliseconds)))
 
 (define-values (id name) (generate-identity))
+(info id name)
 
 (define initial-elevator-state (elevator-state id name 0 empty empty empty empty 0 empty))
 (define time-to-live 3)
-
-(info id name)
 
 (let loop ([this-elevator initial-elevator-state]
            [all-elevators (make-immutable-hash)])

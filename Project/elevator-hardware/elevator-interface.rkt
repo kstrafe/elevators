@@ -1,4 +1,3 @@
-#! /usr/bin/env racket
 #lang racket
 
 ;; This module provides the following functions
