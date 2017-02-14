@@ -29,23 +29,30 @@
 (define initial-elevator-state (elevator-state id name 0 empty empty empty empty 0 empty))
 (define time-to-live 3)
 
-(define (filter-newest messages this-elevator all-elevators)
+(define (filter-newest this-elevator all-elevators messages)
   ;; Group on id, sort by time, discard all but newest, discard if older than current
   ;(trce messages)
-  (let ([hashed-messages (make-immutable-hash)])
-    (~>
-      ;; Filter all messages on id and newest time
-      (foldl (lambda (c s)
-        (trce s)
+  ;(trce this-elevator)
+  (~>
+    ;; Create elevator-attributes from messages
+    ;(foldl
+    ;  (lambda (c s)
+    ;    (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c))))
+    ;  (make-immutable-hash)
+    ;  messages)
+    ;; Filter all messages on id and newest time
+    (foldl
+      (lambda (c s)
+        ;(trce s)
         (cond
-          [(not (hash-has-key? s (elevator-state-id (first c)))) (hash-set s (elevator-state-id (first c)) c)]
-          [(> (last c) (last (hash-ref s (elevator-state-id (first c))))) (hash-set s (elevator-state-id (first c)) c)]
+          [(not (hash-has-key? s (elevator-state-id (first c)))) (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c)))]
+          [(> (last c) (elevator-attributes-timestamp (hash-ref s (elevator-state-id (first c))))) (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c)))]
           [else s]))
-        hashed-messages
-        messages)
-      ;; TODO Discard messages older than current
-      ;; Update our own current state
-      (hash-set id (list this-elevator (current-inexact-milliseconds))))))
+      (make-immutable-hash)
+      messages)
+    ;; TODO Discard messages older than current from all-elevators
+    ;; Update our own current state
+    (hash-set id (elevator-attributes this-elevator 3 (current-inexact-milliseconds)))))
 
 (let loop ([this-elevator initial-elevator-state]
            [all-elevators (make-immutable-hash)])
@@ -53,9 +60,11 @@
   (sleep 1)
 
   (let-values ([(this-elevator* all-elevators*) (fold-buttons-into-elevators (pop-button-states) this-elevator all-elevators)])
-    (let ([messages (filter-newest (receive) this-elevator* all-elevators*)])
+    (let ([messages (receive)])
+      (trce all-elevators*)
       ;; TODO For each ID, time needs to be compared to each other AND all-elevators* time
-      ;(trce all-elevators*)
+      (let ([all-elevators** (filter-newest this-elevator* all-elevators* messages)])
+        (trce all-elevators**))
       (if #f
         (~>
           ;; Decrement all 'time-to-live's
