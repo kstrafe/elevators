@@ -2,23 +2,12 @@
 #lang racket
 
 ; raco pkg install lens threading libuuid <<< a
-(require lens threading "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt" "network/network.rkt" "poll-buttons.rkt" "utilities.rkt")
-
-;; Fold the button presses into the current elevator. Then put the current elevator into all-elevators
-(define (fold-buttons-into-elevators buttons this-elevator all-elevators)
-  (let* ([button-presses buttons]
-         [commands (filter (lambda (x) (eq? (first x) 'command)) button-presses)]
-         [this-elevator* (foldl (lambda (c s) (lens-transform elevator-state-internal-requests-lens s (lambda (x) (cons c x)))) this-elevator commands)]
-         [non-commands (filter (lambda (x) (not (eq? (first x) 'command))) button-presses)]
-         [this-elevator** (foldl (lambda (c s) (lens-transform elevator-state-external-requests-lens s (lambda (x) (cons c x)))) this-elevator* non-commands)]
-         [all-elevators* (hash-set all-elevators (elevator-state-id this-elevator) (elevator-attributes this-elevator time-to-live (current-inexact-milliseconds)))])
-    (values this-elevator all-elevators*)))
+(require lens threading
+  "data-structures.rkt"
+  "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt" "network/network.rkt" "poll-buttons.rkt" "utilities.rkt")
 
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)
-
-(struct/lens elevator-state (id name position servicing-requests external-requests internal-requests done-requests resting-position opening-time) #:prefab)
-(struct/lens elevator-attributes (state time-to-live timestamp) #:prefab)
 
 (define (elevator-attributes-refresh attributes)
   (elevator-attributes (elevator-attributes-state attributes) time-to-live (current-inexact-milliseconds)))
@@ -27,17 +16,16 @@
 (info id name)
 
 (define initial-elevator-state (elevator-state id name 0 empty empty empty empty 0 empty))
-(define time-to-live 3)
 
 (let loop ([this-elevator initial-elevator-state]
            [all-elevators (make-immutable-hash)])
   (send this-elevator)
   (sleep 1)
-
   (let-values ([(this-elevator* all-elevators*) (fold-buttons-into-elevators (pop-button-states) this-elevator all-elevators)])
     (let ([messages (filter (lambda (x) (not (string=? (elevator-state-id (first x)) id))) (receive))])
       ;; TODO For each ID, time needs to be compared to each other AND all-elevators* time
       (trce all-elevators*)
+      (trce this-elevator*)
       (if #f
         (~>
           ;; Decrement all 'time-to-live's
@@ -56,4 +44,3 @@
 
           (loop this-elevator* _))
         (loop this-elevator* all-elevators*)))))
-

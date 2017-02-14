@@ -30,6 +30,11 @@
 
 ;; Load the elevator hardware library
 (define-runtime-path library "libelevator-hardware")
+(define-runtime-path library-file "libelevator-hardware.so")
+(define-runtime-path this-folder ".")
+(when (not (file-exists? library-file))
+  (let-values ([(p o i e) (subprocess #f #f #f "/usr/bin/env" "bash" "-c" (string-append "cd " (path->string this-folder) " && make"))])
+    (port->string o)))
 (define driver (ffi-lib library))
 
 ;; Define the enumerations used by the library
@@ -67,4 +72,4 @@
   (get-stop-signal (_fun -> _int))
   (get-obstruction-signal (_fun -> _int)))
 
-; (elevator-hardware-init)
+(elevator-hardware-init)

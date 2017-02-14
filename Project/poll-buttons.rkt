@@ -2,9 +2,7 @@
 
 (provide pop-button-states)
 
-(require racket/async-channel
-         "elevator-hardware/elevator-interface.rkt"
-         "utilities.rkt")
+(require racket/async-channel "elevator-hardware/elevator-interface.rkt" "utilities.rkt")
 
 (define floor-count 4)
 
@@ -68,7 +66,7 @@
               (trce `("Set stop lamp to" ,stop?))
               (elevator-hardware-set-stop-lamp 1)
               (async-channel-put button-channel '(stop)))
-            (if (and (positive? floor) (not (= floor previous-floor)))
+            (if (and (not (negative? floor)) (not (= floor previous-floor)))
               (begin
                 (trce `("Set floor lamp to" ,floor))
                 (elevator-hardware-set-floor-indicator floor)
