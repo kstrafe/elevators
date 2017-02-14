@@ -29,20 +29,6 @@
 (define initial-elevator-state (elevator-state id name 0 empty empty empty empty 0 empty))
 (define time-to-live 3)
 
-(define (filter-newest this-elevator all-elevators messages)
-  (~>
-    ;; Filter all messages on id and newest time
-    (foldl (lambda (c s)
-        (cond [(not (hash-has-key? s (elevator-state-id (first c)))) (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c)))]
-              [(> (last c) (elevator-attributes-timestamp (hash-ref s (elevator-state-id (first c))))) (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c)))]
-              [else s]))
-      (make-immutable-hash)
-      messages)
-    ;; Discard messages older than current from all-elevators
-    (hash-union all-elevators #:combine/key (lambda (k a b) (if (> (elevator-attributes-timestamp a) (elevator-attributes-timestamp b)) a b)))
-    ;; Update our own current state
-    (hash-set id (elevator-attributes this-elevator 3 (current-inexact-milliseconds)))))
-
 (let loop ([this-elevator initial-elevator-state]
            [all-elevators (make-immutable-hash)])
   (send this-elevator)
