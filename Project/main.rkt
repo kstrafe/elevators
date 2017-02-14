@@ -2,7 +2,7 @@
 #lang racket
 
 ; raco pkg install lens threading libuuid <<< a
-(require lens threading "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt" "network/network.rkt" "poll-buttons.rkt" "utilities.rkt")
+(require lens racket/hash threading "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt" "network/network.rkt" "poll-buttons.rkt" "utilities.rkt")
 
 ;; Fold the button presses into the current elevator. Then put the current elevator into all-elevators
 (define (fold-buttons-into-elevators buttons this-elevator all-elevators)
@@ -30,27 +30,16 @@
 (define time-to-live 3)
 
 (define (filter-newest this-elevator all-elevators messages)
-  ;; Group on id, sort by time, discard all but newest, discard if older than current
-  ;(trce messages)
-  ;(trce this-elevator)
   (~>
-    ;; Create elevator-attributes from messages
-    ;(foldl
-    ;  (lambda (c s)
-    ;    (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c))))
-    ;  (make-immutable-hash)
-    ;  messages)
     ;; Filter all messages on id and newest time
-    (foldl
-      (lambda (c s)
-        ;(trce s)
-        (cond
-          [(not (hash-has-key? s (elevator-state-id (first c)))) (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c)))]
-          [(> (last c) (elevator-attributes-timestamp (hash-ref s (elevator-state-id (first c))))) (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c)))]
-          [else s]))
+    (foldl (lambda (c s)
+        (cond [(not (hash-has-key? s (elevator-state-id (first c)))) (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c)))]
+              [(> (last c) (elevator-attributes-timestamp (hash-ref s (elevator-state-id (first c))))) (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c)))]
+              [else s]))
       (make-immutable-hash)
       messages)
-    ;; TODO Discard messages older than current from all-elevators
+    ;; Discard messages older than current from all-elevators
+    (hash-union all-elevators #:combine/key (lambda (k a b) (if (> (elevator-attributes-timestamp a) (elevator-attributes-timestamp b)) a b)))
     ;; Update our own current state
     (hash-set id (elevator-attributes this-elevator 3 (current-inexact-milliseconds)))))
 
