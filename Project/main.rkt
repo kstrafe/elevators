@@ -52,12 +52,13 @@
     (let ([messages (receive)])
       (trce all-elevators*)
       ;; TODO For each ID, time needs to be compared to each other AND all-elevators* time
-      (let ([all-elevators** (filter-newest this-elevator* all-elevators* messages)])
-        (trce all-elevators**))
       (if #f
         (~>
+          ;; Remove all old messages
+          (filter-newest this-elevator* all-elevators* messages)
+
           ;; Decrement all 'time-to-live's
-          (map-hash-table all-elevators* (lambda (x)
+          (map-hash-table (lambda (x)
             (lens-transform elevator-attributes-time-to-live-lens x sub1)))
 
           ;; Reset 'time-to-live' for the elevators from which we received a message
