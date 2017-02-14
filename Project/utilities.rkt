@@ -59,17 +59,17 @@
 (define prune-requests-tests
   (test-suite "Test prune-requests"
     (check-equals? prune-requests
-      (('() '())                                              '())
-      ;(('((up 1 0)) '((command 0 0)))                         '((up 0 0) (command 0 0)))
-      ; (('((up 1 2) (down 3 4)) '((down 5 6)))                 '((up 1 2) (down 3 4) (down 5 6)))
-      ; (('((up 1 2) (down 3 4)) '((down 3 6)))                 '((up 1 2) (down 3 6)))
-      ; (('((command 0 0)) '())                                 '((command 0 0)))
-      ; (('() '((command 0 0)))                                 '((command 0 0)))
-      ; (('() '((command 1 0) (command 0 0)))                   '((command 1 0) (command 0 0)))
-      ; (('((command 0 0)) '((command 0 1)))                    '((command 0 1)))
-      ; (('((command 1 0)) '((command 0 1)))                    '((command 1 0) (command 0 1)))
-      ; (('((command 2 100) (command 1 0)) '((command 0 1)))    '((command 2 100) (command 1 0) (command 0 1))))))
-  )))
+      (('() '())                                                                  '())
+      (('(#s(external-command up 0 0)) '(#s(external-command up 0 0)))            '(#s(external-command up 0 0)))
+      (('(#s(external-command up 1 0)) '(#s(external-command up 1 0)))            '(#s(external-command up 1 0)))
+      (('(#s(external-command up 1 2)) '(#s(external-command up 1 0)))            '(#s(external-command up 1 0)))
+      (('(#s(external-command up 1 0)) '(#s(external-command up 1 2)))            '(#s(external-command up 1 2)))
+
+      (('(#s(external-command down 0 0)) '(#s(external-command up 0 0)))          '(#s(external-command down 0 0) #s(external-command up 0 0)))
+      (('(#s(external-command down 0 1)) '(#s(external-command down 0 0)))        '(#s(external-command down 0 0)))
+
+      (((for/list ([i (range 50 150)]) (internal-command i 0)) (for/list ([i 100]) (internal-command i 0)))
+        (append (for/list ([i (range 100 150)]) (internal-command i 0)) (for/list ([i 100]) (internal-command i 0)))))))
 (run-tests prune-requests-tests)
 
 

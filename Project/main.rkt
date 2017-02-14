@@ -22,7 +22,7 @@
   (send this-elevator)
   (sleep 1)
   (let-values ([(this-elevator* all-elevators*) (fold-buttons-into-elevators (pop-button-states) this-elevator all-elevators)])
-    (set-lights-using-commands (elevator-state-external-commands this-elevator*) (elevator-state-internal-commands this-elevator*))
+    (set-lights-using-commands (elevator-state-external-requests this-elevator*) (elevator-state-internal-requests this-elevator*))
     (let ([messages (filter (lambda (x) (not (string=? (elevator-state-id (first x)) id))) (receive))])
       ;; TODO For each ID, time needs to be compared to each other AND all-elevators* time
       (if #f
