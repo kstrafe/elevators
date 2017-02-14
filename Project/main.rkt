@@ -3,8 +3,8 @@
 
 ; raco pkg install lens threading libuuid <<< a
 (require lens threading
-  "data-structures.rkt"
-  "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt" "network/network.rkt" "poll-buttons.rkt" "utilities.rkt")
+  "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt"
+  "network/network.rkt" "poll-buttons.rkt" "utilities.rkt")
 
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)
@@ -22,10 +22,9 @@
   (send this-elevator)
   (sleep 1)
   (let-values ([(this-elevator* all-elevators*) (fold-buttons-into-elevators (pop-button-states) this-elevator all-elevators)])
+    (set-lights-using-commands (elevator-state-external-commands this-elevator*) (elevator-state-internal-commands this-elevator*))
     (let ([messages (filter (lambda (x) (not (string=? (elevator-state-id (first x)) id))) (receive))])
       ;; TODO For each ID, time needs to be compared to each other AND all-elevators* time
-      (trce all-elevators*)
-      (trce this-elevator*)
       (if #f
         (~>
           ;; Decrement all 'time-to-live's
