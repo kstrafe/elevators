@@ -33,8 +33,6 @@
     (lens-set internal-command-timestamp-lens command time)
     (lens-set external-command-timestamp-lens command time)))
 
-(define (remove-duplicates list) (foldr (lambda (x s) (cons x (filter (lambda (z) (not (equal? x z))) s))) empty list))
-
 (define (button-type a-command)
   (if (external-command? a-command)
     (if (symbol=? (external-command-direction a-command) 'up)

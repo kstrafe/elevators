@@ -120,8 +120,7 @@
 
 (define (unify-requests* all-elevators accessor)
   (~>
-    (for/list ([value (hash-values all-elevators)])
-      (lens-view accessor value))
+    (map (curry lens-view accessor) (hash-values all-elevators))
     flatten
     remove-duplicates
     (sort > #:key external-command-timestamp)
@@ -137,10 +136,10 @@
     (unify-requests* external-of-hash)))
 
 (define (prune-requests-that-are-done all-elevators)
-  (let* ([state (first (hash-values all-elevators))]
-         [done (lens-view done-of-hash state)]
-         [external (lens-view external-of-hash state)]
-         [external* (foldr (lambda (x s) (if (ormap (curry equal? x) done) s (cons x s))) empty external)])
+  (let* ([state        (first (hash-values all-elevators))]
+         [done         (lens-view done-of-hash state)]
+         [external     (lens-view external-of-hash state)]
+         [external*    (foldr (lambda (x s) (if (ormap (curry equal? x) done) s (cons x s))) empty external)])
     (map-hash-table all-elevators (lambda (x)
       (lens-set external-of-hash x external*)))))
 
