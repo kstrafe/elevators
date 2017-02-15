@@ -22,12 +22,12 @@
   (send this-elevator)
   (sleep 1)
   (let-values ([(this-elevator* all-elevators*) (fold-buttons-into-elevators (pop-button-states) this-elevator all-elevators)])
-    (set-lights-using-commands (elevator-state-external-requests this-elevator*) (elevator-state-internal-requests this-elevator*))
+    ;(set-lights-using-commands (elevator-state-external-requests this-elevator*) (elevator-state-internal-requests this-elevator*))
     ;(let ([messages (filter (lambda (x) (not (string=? (elevator-state-id (first x)) id))) (receive))])
     (let ([messages (receive)])
       (trce all-elevators*)
       ;; TODO For each ID, time needs to be compared to each other AND all-elevators* time
-      (if #f
+      (if #t
         (~>
           ;; Remove all old messages
           (filter-newest this-elevator* all-elevators* messages)
