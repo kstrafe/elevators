@@ -72,4 +72,4 @@
   (get-stop-signal (_fun -> _int))
   (get-obstruction-signal (_fun -> _int)))
 
-;(elevator-hardware-init)
+(elevator-hardware-init)

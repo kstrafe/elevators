@@ -1,9 +1,7 @@
 #lang racket
 
 (provide trce dbug info warn erro crit ftal
-  map-hash-table ;; TODO Remove? Used internally now
   hashify
-  hash-set-from-list ;; TODO Remove? Handled by filter-newest-to-hash
   hash-remove-predicate
   decrement-time-to-live filter-newest-to-hash prune-old-messages update-elevator
   prune-requests fold-buttons-into-elevators)
@@ -27,13 +25,6 @@
 (define (map-hash-table hash function)
   (foldl (lambda (x s) (hash-set s x (function (hash-ref s x)))) hash (hash-keys hash)))
 
-;; Append to a hash-table using a list
-;; TODO Remove? Handled by filter-newest-to-hash
-(define-syntax hash-set-from-list
-  (syntax-rules (in: update-with:)
-    [(_ hash accessor in: list update-with: function)
-      (foldl (lambda (x s) (hash-set s (accessor x) (function x))) hash list)]))
-
 ;; Remove all key-value pairs where (predicate value) is true
 (define (hash-remove-predicate hash predicate)
   (foldl (lambda (x s) (if (predicate (hash-ref s x)) (hash-remove s x) s)) hash (hash-keys hash)))
@@ -44,15 +35,19 @@
 ;; Take messages, make into hash-set of attributes with ttl reset
 (define (filter-newest-to-hash messages)
   (foldl (lambda (c s)
-      (cond [(not (hash-has-key? s (elevator-state-id (first c)))) (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c)))]
-            [(> (last c) (elevator-attributes-timestamp (hash-ref s (elevator-state-id (first c))))) (hash-set s (elevator-state-id (first c)) (elevator-attributes (first c) 3 (last c)))]
-            [else s]))
+    (let* ([state (first c)]
+           [id (elevator-state-id state)]
+           [timestamp (last c)]
+           [elev-ts elevator-attributes-timestamp])
+      (if (or (not (hash-has-key? s id)) (> timestamp (elev-ts (hash-ref s id))))
+        (hash-set s id (elevator-attributes state time-to-live timestamp))
+        s)))
     (make-immutable-hash)
     messages))
 
 ;; Discard messages older than current from all-elevators
 (define (prune-old-messages elevators all-elevators)
-  (hash-union elevators all-elevators #:combine/key (lambda (k a b) (if (> (elevator-attributes-timestamp a) (elevator-attributes-timestamp b)) a b))))
+  (hash-union elevators all-elevators #:combine (lambda (a b) (if (> (elevator-attributes-timestamp a) (elevator-attributes-timestamp b)) a b))))
 
 ;; Decrement all 'time-to-live's
 (define (decrement-time-to-live elevators)
