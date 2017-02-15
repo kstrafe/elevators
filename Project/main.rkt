@@ -12,12 +12,10 @@
 (define-values (id name) (generate-identity))
 (info id name)
 
-(define initial-elevator-state (elevator-state id name 0 empty empty empty empty 0 empty))
-
-(let loop ([this-elevator initial-elevator-state]
+(let loop ([this-elevator (elevator-state id name 0 empty empty empty empty 0 empty)]
            [all-elevators (make-immutable-hash)])
   (send this-elevator)
-  (sleep 1)
+  (sleep iteration-sleep-time)
   (let-values ([(this-elevator* all-elevators*) (fold-buttons-into-elevators (pop-button-states) this-elevator all-elevators)])
     (set-lights-using-commands (elevator-state-external-requests this-elevator*) (elevator-state-internal-requests this-elevator*))
     (let ([messages (receive)])
