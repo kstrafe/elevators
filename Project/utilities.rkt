@@ -66,6 +66,7 @@
       (('(#s(external-command up 1 0)) '(#s(external-command up 1 2)))            '(#s(external-command up 1 2)))
 
       (('(#s(external-command down 0 0)) '(#s(external-command up 0 0)))          '(#s(external-command down 0 0) #s(external-command up 0 0)))
+      (('(#s(external-command up 0 0)) '(#s(external-command down 0 0)))          '(#s(external-command up 0 0) #s(external-command down 0 0)))
       (('(#s(external-command down 0 1)) '(#s(external-command down 0 0)))        '(#s(external-command down 0 0)))
 
       (((for/list ([i (range 50 150)]) (internal-command i 0)) (for/list ([i 100]) (internal-command i 0)))
