@@ -1,22 +1,39 @@
 #lang racket
 
-(provide trce dbug info warn erro crit ftal
+(provide
+  trce dbug info warn erro crit ftal
+  trce* dbug* info* warn* erro* crit* ftal*
   hashify
   hash-remove-predicate
   decrement-time-to-live filter-newest-to-hash prune-old-messages update-elevator
   prune-requests fold-buttons-into-elevators)
 
-(require lens racket/fasl racket/hash racket/pretty rackunit rackunit/text-ui sha threading
-  "data-structures.rkt")
+(require lens racket/fasl racket/hash racket/pretty racket/syntax rackunit rackunit/text-ui sha threading
+  "data-structures.rkt"
+  (for-syntax racket/syntax))
+
+(define-syntax (generate-stream-logger syn)
+  (let* ([f (cdr (syntax->datum syn))]
+         [n (for/list ([i f]) (format-symbol "~a*" i))])
+    (datum->syntax syn
+      `(begin ,@(for/list ([i n])
+        `(define-syntax-rule (,i expr)
+          (begin
+            (let ([e expr])
+              (pretty-write (list ',i '_ '= e) (current-error-port))
+              e))))))))
 
 ;; Create custom loggers that pretty-writes to standard error
 (define-syntax-rule (generate-loggers type ...)
   (begin
-    (... (define-syntax-rule (type expr ...)
-           (begin
-             (pretty-write `(,(string->symbol (format "~a:" (symbol->string 'type))) expr = ,expr) (current-error-port)) ...))) ...))
+    (...
+      (define-syntax-rule (type expr ...)
+        (begin
+          (pretty-write `(,(format-symbol "~a:" 'type) expr = ,expr) (current-error-port)) ...))) ...))
 
+;; TODO: Clean this mess up into a single macro call!
 (generate-loggers trce dbug info warn erro crit ftal)
+(generate-stream-logger trce dbug info warn erro crit ftal)
 
 ;; Hash a datum by serialization and then sha256
 (define (hashify message) (sha256 (s-exp->fasl message)))
