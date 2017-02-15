@@ -32,5 +32,5 @@
 
         ;; Remove all elevators where time-to-live <= 0
         (hash-remove-predicate (lambda (x) (<= (elevator-attributes-time-to-live x) 0)))
-        unify-done-requests
+        unify-requests
         (loop this-elevator* _)))))

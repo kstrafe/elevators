@@ -5,7 +5,7 @@
   trce* dbug* info* warn* erro* crit* ftal*
   hashify
   hash-remove-predicate
-  unify-done-requests
+  unify-requests
   decrement-time-to-live filter-newest-to-hash prune-old-messages update-elevator
   prune-requests fold-buttons-into-elevators)
 
@@ -117,17 +117,24 @@
         (append (for/list ([i (range 100 150)]) (internal-command i 0)) (for/list ([i 100]) (internal-command i 0)))))))
 (run-tests prune-requests-tests)
 
-(define done-of-hash (lens-compose elevator-state-done-requests-lens elevator-attributes-state-lens))
-(define (unify-done-requests all-elevators)
+(define (unify-requests* all-elevators accessor)
   (~>
     (for/list ([value (hash-values all-elevators)])
-      (lens-view done-of-hash value))
+      (lens-view accessor value))
     flatten
     remove-duplicates
     (sort > #:key external-command-timestamp)
     (define unified-dones _))
   (map-hash-table all-elevators (lambda (x)
-    (lens-set done-of-hash x unified-dones))))
+    (lens-set accessor x unified-dones))))
+
+(define (unify-requests all-elevators)
+  (define done-of-hash (lens-compose elevator-state-done-requests-lens elevator-attributes-state-lens))
+  (define external-of-hash (lens-compose elevator-state-external-requests-lens elevator-attributes-state-lens))
+  (~>
+    (unify-requests* all-elevators done-of-hash)
+    (unify-requests* external-of-hash)))
+
 
 ;; Add the button presses (both external and internal) to the current elevator's state. Then put the current elevator state into the hash-map of all-elevators
 (define (fold-buttons-into-elevators buttons this-elevator all-elevators)
