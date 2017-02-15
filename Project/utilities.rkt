@@ -3,7 +3,7 @@
 (provide trce dbug info warn erro crit ftal
   map-hash-table hashify hash-set-from-list hash-remove-predicate)
 
-(require racket/fasl racket/pretty sha)
+(require racket/fasl racket/hash racket/pretty sha threading)
 
 ;; Create custom loggers that pretty-writes to standard error
 (define-syntax-rule (generate-loggers type ...)

@@ -2,7 +2,7 @@
 #lang racket
 
 ; raco pkg install lens threading libuuid <<< a
-(require lens racket/hash threading "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt" "network/network.rkt" "poll-buttons.rkt" "utilities.rkt")
+(require lens threading "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt" "network/network.rkt" "poll-buttons.rkt" "utilities.rkt")
 
 ;; Fold the button presses into the current elevator. Then put the current elevator into all-elevators
 (define (fold-buttons-into-elevators buttons this-elevator all-elevators)
