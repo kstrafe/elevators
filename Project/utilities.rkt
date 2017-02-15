@@ -2,6 +2,7 @@
 
 (provide
   trce dbug info warn erro crit ftal
+  prune-requests-that-are-done
   trce* dbug* info* warn* erro* crit* ftal*
   hashify
   hash-remove-predicate
@@ -128,13 +129,20 @@
   (map-hash-table all-elevators (lambda (x)
     (lens-set accessor x unified-dones))))
 
+(define done-of-hash (lens-compose elevator-state-done-requests-lens elevator-attributes-state-lens))
+(define external-of-hash (lens-compose elevator-state-external-requests-lens elevator-attributes-state-lens))
 (define (unify-requests all-elevators)
-  (define done-of-hash (lens-compose elevator-state-done-requests-lens elevator-attributes-state-lens))
-  (define external-of-hash (lens-compose elevator-state-external-requests-lens elevator-attributes-state-lens))
   (~>
     (unify-requests* all-elevators done-of-hash)
     (unify-requests* external-of-hash)))
 
+(define (prune-requests-that-are-done all-elevators)
+  (let* ([state (first (hash-values all-elevators))]
+         [done (lens-view done-of-hash state)]
+         [external (lens-view external-of-hash state)]
+         [external* (foldr (lambda (x s) (if (ormap (curry equal? x) done) s (cons x s))) empty external)])
+    (map-hash-table all-elevators (lambda (x)
+      (lens-set external-of-hash x external*)))))
 
 ;; Add the button presses (both external and internal) to the current elevator's state. Then put the current elevator state into the hash-map of all-elevators
 (define (fold-buttons-into-elevators buttons this-elevator all-elevators)
