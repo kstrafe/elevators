@@ -11,7 +11,7 @@
 (define-values (broadcast-port broadcast-sleep) (values 30073 0.4))
 
 (define-values (sender-channel udp-channel) (values (make-async-channel) (udp-open-socket)))
-(udp-bind! udp-channel #f broadcast-port)
+(udp-bind! udp-channel #f broadcast-port #t)
 
 (define (hash-check-passes message)
   (bytes=? (hashify (first message)) (second message)))
