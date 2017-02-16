@@ -1,6 +1,6 @@
 #lang racket
 
-(provide generate-identity)
+(provide generate-or-load-identity)
 
 (require libuuid)
 
@@ -13,7 +13,7 @@
 (define (generate-name)
   (string-join (list (select-random-name) (select-random-name))))
 
-(define (generate-identity)
+(define (generate-or-load-identity)
   (with-handlers ([exn?
     (lambda (e)
       (displayln e)

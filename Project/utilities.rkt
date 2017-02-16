@@ -6,7 +6,9 @@
   trce* dbug* info* warn* erro* crit* ftal*
   hashify
   hash-remove-predicate
+  elevator-attributes-refresh
   unify-requests
+  make-empty-elevator
   decrement-time-to-live filter-newest-to-hash prune-old-messages update-elevator
   prune-requests fold-buttons-into-elevators)
 
@@ -75,7 +77,8 @@
 
 ;; Update our own current state
 (define (update-elevator elevators this-elevator)
-  (hash-set elevators (elevator-state-id this-elevator) (elevator-attributes-refresh this-elevator)))
+  (let ([current-elevator (this-elevator elevators)])
+    (hash-set elevators (elevator-state-id current-elevator) (elevator-attributes-refresh current-elevator))))
 
 (define (equal-command? left right)
   (or
@@ -144,11 +147,14 @@
       (lens-set external-of-hash x external*)))))
 
 ;; Add the button presses (both external and internal) to the current elevator's state. Then put the current elevator state into the hash-map of all-elevators
-(define (fold-buttons-into-elevators buttons this-elevator all-elevators)
+(define (fold-buttons-into-elevators buttons this-elevator elevators)
   (let* ([button-presses      buttons]
          [internal-requests   (filter internal-command? button-presses)]
-         [this-elevator*      (lens-transform elevator-state-internal-requests-lens this-elevator (curry prune-requests internal-requests))]
+         [this-elevator*      (lens-transform elevator-state-internal-requests-lens (this-elevator elevators) (curry prune-requests internal-requests))]
          [external-requests   (filter external-command? button-presses)]
          [this-elevator**     (lens-transform elevator-state-external-requests-lens this-elevator* (curry prune-requests external-requests))]
-         [all-elevators*      (hash-set all-elevators (elevator-state-id this-elevator**) (elevator-attributes this-elevator** time-to-live (current-inexact-milliseconds)))])
-    (values this-elevator** all-elevators*)))
+         [all-elevators*      (hash-set elevators (elevator-state-id this-elevator**) (elevator-attributes this-elevator** time-to-live (current-inexact-milliseconds)))])
+    all-elevators*))
+
+(define (make-empty-elevator id name)
+  (elevator-attributes-refresh (elevator-state id name 0 empty empty empty empty 0 empty)))

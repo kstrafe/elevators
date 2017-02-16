@@ -15,9 +15,11 @@
             empty))))))
 
 ;; Set the current elevator's lights using the button states
-(define (set-lights-using-commands external-commands internal-commands)
-  (let ([commands (append external-commands internal-commands)])
-    (map (lambda (c) (elevator-hardware-set-button-lamp (button-type c) (button-floor c) 1)) commands)))
+(define (set-lights-using-commands elevator)
+  (let ([external-commands (elevator-state-external-requests elevator)]
+        [internal-commands (elevator-state-internal-requests elevator)])
+    (let ([commands (append external-commands internal-commands)])
+      (map (lambda (c) (elevator-hardware-set-button-lamp (button-type c) (button-floor c) 1)) commands))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
