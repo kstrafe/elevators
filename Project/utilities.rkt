@@ -5,7 +5,8 @@
   prune-requests-that-are-done
   trce* dbug* info* warn* erro* crit* ftal*
   compute-the-task-to-take
-  set-motor-direction-to-task
+  set-motor-direction-to-task!
+  update-position
   remove-tasks-that-motor-completed
   hashify
   hash-remove-predicate
@@ -160,10 +161,18 @@
     all-elevators*))
 
 (define (make-empty-elevator id name)
-  (elevator-attributes-refresh (elevator-state id name -1 empty empty empty empty 0 empty)))
+  (elevator-attributes-refresh (elevator-state id name 0 empty empty empty empty 0 0)))
+
+(define (update-position hash lens)
+  (let ([floor (any-new-floor-reached?)])
+    (if floor
+      (lens-set lens hash floor)
+      hash)))
 
 (define (compute-the-task-to-take hash this-elevator id)
   ;; Simply move the top task from external to pending
+  ;; TODO Implement better algorithm, this is currently useless except for demonstrations
+  ;; TODO Don't use 'this-elevator', use lenses instead
   (let* ([current-elevator (this-elevator hash)]
          [external         (elevator-state-external-requests current-elevator)]
          [servicing        (elevator-state-servicing-requests current-elevator)])
@@ -178,19 +187,29 @@
       (define elevator _))
     (hash-set hash id (elevator-attributes-refresh elevator))))
 
-(define (set-motor-direction-to-task hash this-elevator)
-  (define elevator (this-elevator hash))
-  (define reqs (elevator-state-servicing-requests elevator))
-  (trce reqs)
-  (when (not (empty? reqs))
-    (define req (first reqs))
-    (define floor
-      (cond
-        [(external-command? req) (external-command-floor req)]
-        [(internal-command? req) (internal-command-floor req)]))
-    (when (not (= floor (elevator-state-position elevator)))
-      (set-motor-to floor)))
+(define (command-floor command)
+  (cond
+    [(external-command? command) (external-command-floor command)]
+    [(internal-command? command) (internal-command-floor command)]))
+
+(define (set-motor-direction-to-task! hash lens)
+  ;; Calls move-to-floor depending on the top of the 'servicing-requests'
+  ;; field in the current elevator.
+  ;; If the current floor is the servicing floor, then
+  ;; the motor will not start moving, so this function is seems to be alright
+  ;; as it is.
+  ;
+  ;; The ! at the end of the function name denotes side-effect without altering hash.
+  ;; Maybe we should in general separate side effects from changing the hash table.
+  (let ([servicing-requests (lens-view lens hash)])
+    (when (not (empty? servicing-requests))
+      (~>
+        (first servicing-requests)
+        command-floor
+        move-to-floor)))
   hash)
 
 (define (remove-tasks-that-motor-completed hash this-elevator id)
+  ;; TODO Remove all tasks where the position of the elevator is equal to a task
+  ;; TODO Rename this function
   hash)

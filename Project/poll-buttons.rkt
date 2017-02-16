@@ -65,6 +65,8 @@
              [previous-obstruct #t])
     (sleep 0.05)
     (let-values ([(buttons-up buttons-down buttons-command) (apply values (map poll-direction-buttons elevator-hardware-button-list))])
+            ;; TODO Remove floor sensor here, lamp-setting of floor sensors can be implemented using state-position
+            ;; Motor already gives us floor signals, and is better suited for it
       (let ([floor (elevator-hardware-get-floor-sensor-signal)]
             [stop? (if (= 1 (elevator-hardware-get-stop-signal)) #t #f)]
             [obstruction? (if (= 0 (elevator-hardware-get-obstruction-signal)) #t #f)])
