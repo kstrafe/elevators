@@ -4,6 +4,9 @@
   trce dbug info warn erro crit ftal
   prune-requests-that-are-done
   trce* dbug* info* warn* erro* crit* ftal*
+  compute-the-task-to-take
+  set-motor-direction-to-task
+  remove-tasks-that-motor-completed
   hashify
   hash-remove-predicate
   elevator-attributes-refresh
@@ -13,7 +16,7 @@
   prune-requests fold-buttons-into-elevators)
 
 (require lens racket/fasl racket/hash racket/pretty racket/syntax rackunit rackunit/text-ui sha threading
-  "data-structures.rkt"
+  "data-structures.rkt" "motor.rkt"
   (for-syntax racket/syntax))
 
 (define-syntax (generate-stream-logger syn)
@@ -157,4 +160,37 @@
     all-elevators*))
 
 (define (make-empty-elevator id name)
-  (elevator-attributes-refresh (elevator-state id name 0 empty empty empty empty 0 empty)))
+  (elevator-attributes-refresh (elevator-state id name -1 empty empty empty empty 0 empty)))
+
+(define (compute-the-task-to-take hash this-elevator id)
+  ;; Simply move the top task from external to pending
+  (let* ([current-elevator (this-elevator hash)]
+         [external         (elevator-state-external-requests current-elevator)]
+         [servicing        (elevator-state-servicing-requests current-elevator)])
+    (~>
+      (if (empty? servicing)
+        (if (not (empty? external))
+          (~>
+            (lens-set elevator-state-servicing-requests-lens current-elevator (list (first external)))
+            (lens-transform elevator-state-external-requests-lens _ rest))
+          current-elevator)
+        current-elevator)
+      (define elevator _))
+    (hash-set hash id (elevator-attributes-refresh elevator))))
+
+(define (set-motor-direction-to-task hash this-elevator)
+  (define elevator (this-elevator hash))
+  (define reqs (elevator-state-servicing-requests elevator))
+  (trce reqs)
+  (when (not (empty? reqs))
+    (define req (first reqs))
+    (define floor
+      (cond
+        [(external-command? req) (external-command-floor req)]
+        [(internal-command? req) (internal-command-floor req)]))
+    (when (not (= floor (elevator-state-position elevator)))
+      (set-motor-to floor)))
+  hash)
+
+(define (remove-tasks-that-motor-completed hash this-elevator id)
+  hash)
