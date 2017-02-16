@@ -8,7 +8,11 @@
 (define time-to-live 6)
 (define iteration-sleep-time 1)
 
-(struct/lens elevator-attributes (state time-to-live timestamp) #:prefab)
-(struct/lens elevator-state (id name position servicing-requests external-requests internal-requests done-requests resting-position opening-time) #:prefab)
-(struct/lens external-command (direction floor timestamp) #:prefab)
-(struct/lens internal-command (floor timestamp) #:prefab)
+(define-syntax-rule (struct/lens-es (name (attributes ...) keywords ...) ...)
+  (begin (struct/lens name (attributes ...) #:prefab keywords ...) ...))
+
+(struct/lens-es
+  (elevator-attributes (state time-to-live timestamp))
+  (elevator-state      (id name position servicing-requests external-requests internal-requests done-requests resting-position opening-time))
+  (external-command    (direction floor timestamp))
+  (internal-command    (floor timestamp)))
