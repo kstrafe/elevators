@@ -8,7 +8,7 @@
   (let-values ([(p o i e)
     (subprocess #f #f #f "/usr/bin/env" "bash" "-c" "ifconfig | grep Bcast | cut -d':' -f 3 | cut -d' ' -f 1")])
     (read-line o)))
-(define-values (broadcast-port broadcast-sleep) (values 30073 0.4))
+(define-values (broadcast-port broadcast-sleep) (values 30073 0.04))
 
 (define-values (sender-channel udp-channel) (values (make-async-channel) (udp-open-socket)))
 (udp-bind! udp-channel #f broadcast-port #t)
