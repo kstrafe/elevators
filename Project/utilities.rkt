@@ -7,7 +7,7 @@
   compute-the-task-to-take
   set-motor-direction-to-task!
   update-position
-  remove-tasks-that-motor-completed
+  prune-servicing-requests
   hashify
   hash-remove-predicate
   elevator-attributes-refresh
@@ -209,7 +209,21 @@
         move-to-floor)))
   hash)
 
-(define (remove-tasks-that-motor-completed hash this-elevator id)
-  ;; TODO Remove all tasks where the position of the elevator is equal to a task
-  ;; TODO Rename this function
-  hash)
+(define (first-or-empty list)
+  (if (empty? list)
+    empty
+    (first list)))
+
+(define (prune-servicing-requests hash servicing-lens done-lens opening-lens pos-lens internal-lens)
+  (let ([servicing (first-or-empty (lens-view servicing-lens hash))])
+    (if (not (empty? servicing))
+      (if (= (lens-view pos-lens hash) (command-floor servicing))
+        ;; We know that the motor has tuned into this floor, so it's safe to remove (we're not in transit)
+        (~>
+          (lens-transform servicing-lens hash rest)
+          (lens-transform done-lens      _ (lambda (done) (if (external-command? servicing) (cons servicing done) done)))
+          (lens-transform internal-lens  _ (lambda (internal) (if (internal-command? servicing) (remove servicing internal) internal)))
+          (lens-set opening-lens         _ 10)
+          (prune-servicing-requests servicing-lens done-lens opening-lens pos-lens internal-lens))
+        hash)
+      hash)))

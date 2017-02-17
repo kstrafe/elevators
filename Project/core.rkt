@@ -23,6 +23,7 @@
 (define internal-requests-lens (lens-compose elevator-state-internal-requests-lens state-lens))
 (define external-requests-lens (lens-compose elevator-state-external-requests-lens state-lens))
 (define position-lens (lens-compose elevator-state-position-lens state-lens))
+(define done-lens (lens-compose elevator-state-done-requests-lens state-lens))
 (define servicing-lens (lens-compose elevator-state-servicing-requests-lens state-lens))
 
 ;; The core algorithm consumes a hash-table of elevators
@@ -68,4 +69,4 @@
               (set-motor-direction-to-task! servicing-lens)
               ;; Check the current elevator position against the 'servicing requests'
               ;; If it's equal, remove it and set the opening-time value
-              (remove-tasks-that-motor-completed this-elevator id))))))))
+              (prune-servicing-requests servicing-lens done-lens opening-lens position-lens internal-requests-lens))))))))
