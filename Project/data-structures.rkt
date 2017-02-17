@@ -6,7 +6,7 @@
 
 (define floor-count 4)
 (define time-to-live 6)
-(define iteration-sleep-time 0.1)
+(define iteration-sleep-time 1)
 
 (define-syntax-rule (struct/lens-es (name (attributes ...) keywords ...) ...)
   (begin (struct/lens name (attributes ...) #:prefab keywords ...) ...))

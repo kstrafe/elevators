@@ -67,7 +67,7 @@
               (remove-tasks-that-motor-completed this-elevator id)
               ;; TODO External requests
               ;; Compute servicing of internal requests
-              (compute-servicing-of-internal-requests state-lens)
+              (compute-servicing-of-internal-requests position-lens servicing-lens internal-requests-lens opening-lens)
               ;; Calculate the tasks to work on, to be put into 'servicing requests'
               (compute-the-task-to-take _ this-elevator id)
               ;; Use the 'servicing requests' field to set the motor direction

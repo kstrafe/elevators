@@ -188,9 +188,31 @@
       (define elevator _))
     (hash-set hash id (elevator-attributes-refresh elevator))))
 
-(define (compute-servicing-of-internal-requests hash lens)
-  (trce (lens-view lens hash))
-  hash)
+(define (get-direction position servicing-requests opening)
+  (if (empty? servicing-requests)
+    0
+    (let ([command (first servicing-requests)])
+      (cond
+        [(external-command? command) (sgn (- (external-command-floor command) position))]
+        [(internal-command? command) (sgn (- (internal-command-floor command) position))]))))
+
+(define (compute-servicing-of-internal-requests hash position-lens servicing-lens internal-requests-lens opening-lens)
+  (let ([position (lens-view position-lens hash)]
+        [servicing-requests (lens-view servicing-lens hash)]
+        [internal-requests (lens-view internal-requests-lens hash)]
+        [opening (lens-view opening-lens hash)])
+    (trce servicing-requests internal-requests)
+    ;; Find direction of travel based on position, servicing and door
+    (let ([direction (get-direction position servicing-requests opening)])
+      (trce direction)
+      (if (= direction 0)
+        (begin
+          (trce internal-requests)
+          ;; Returns the oldest internal request
+          ;; TODO Put this request into servicing of the current hash and return it for further use
+          (foldl (lambda (c s) (if (> (internal-command-timestamp c) (internal-command-timestamp s)) c s)) (first internal-requests) (rest internal-requests)))
+        #f)
+      hash)))
 
 (define (command-floor command)
   (cond
