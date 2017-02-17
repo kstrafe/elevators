@@ -62,10 +62,10 @@
               unify-requests
               ;; Remove requests from external-requests that are in done-requests
               prune-requests-that-are-done
+              ;; Check the current elevator position against the 'servicing requests'
+              ;; If it's equal, remove it and set the opening-time value
+              (remove-tasks-that-motor-completed this-elevator id)
               ;; Calculate the tasks to work on, to be put into 'servicing requests'
               (compute-the-task-to-take _ this-elevator id)
               ;; Use the 'servicing requests' field to set the motor direction
-              (set-motor-direction-to-task! servicing-lens)
-              ;; Check the current elevator position against the 'servicing requests'
-              ;; If it's equal, remove it and set the opening-time value
-              (remove-tasks-that-motor-completed this-elevator id))))))))
+              (set-motor-direction-to-task! servicing-lens))))))))
