@@ -65,6 +65,9 @@
               ;; Check the current elevator position against the 'servicing requests'
               ;; If it's equal, remove it and set the opening-time value
               (remove-tasks-that-motor-completed this-elevator id)
+              ;; TODO External requests
+              ;; Compute servicing of internal requests
+              (compute-servicing-of-internal-requests state-lens)
               ;; Calculate the tasks to work on, to be put into 'servicing requests'
               (compute-the-task-to-take _ this-elevator id)
               ;; Use the 'servicing requests' field to set the motor direction

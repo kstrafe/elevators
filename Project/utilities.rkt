@@ -4,6 +4,7 @@
   trce dbug info warn erro crit ftal
   prune-requests-that-are-done
   trce* dbug* info* warn* erro* crit* ftal*
+  compute-servicing-of-internal-requests
   compute-the-task-to-take
   set-motor-direction-to-task!
   update-position
@@ -186,6 +187,10 @@
         current-elevator)
       (define elevator _))
     (hash-set hash id (elevator-attributes-refresh elevator))))
+
+(define (compute-servicing-of-internal-requests hash lens)
+  (trce (lens-view lens hash))
+  hash)
 
 (define (command-floor command)
   (cond
