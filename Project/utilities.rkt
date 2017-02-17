@@ -4,7 +4,7 @@
   trce dbug info warn erro crit ftal
   prune-requests-that-are-done
   trce* dbug* info* warn* erro* crit* ftal*
-  compute-the-task-to-take
+  try-self-assign-external-task
   set-motor-direction-to-task!
   update-position
   prune-servicing-requests
@@ -169,23 +169,69 @@
       (lens-set lens hash floor)
       hash)))
 
-(define (compute-the-task-to-take hash this-elevator id)
-  ;; Simply move the top task from external to pending
-  ;; TODO Implement better algorithm, this is currently useless except for demonstrations
-  ;; TODO Don't use 'this-elevator', use lenses instead
-  (let* ([current-elevator (this-elevator hash)]
-         [external         (elevator-state-external-requests current-elevator)]
-         [servicing        (elevator-state-servicing-requests current-elevator)])
+; (define (remove-all-elements-from-list elements list)
+;   (if (empty? elements)
+;     list
+;     (remove-all-elements-from-list (rest elements) (remove (first elements) list))))
+
+(define (compute-available-external-requests hash)
+  (define servicing-lens (lens-compose elevator-state-servicing-requests-lens elevator-attributes-state-lens))
+  (define external-lens  (lens-compose elevator-state-external-requests-lens elevator-attributes-state-lens))
+  (let ([elevators (hash-values hash)])
     (~>
-      (if (empty? servicing)
-        (if (not (empty? external))
-          (~>
-            (lens-set elevator-state-servicing-requests-lens current-elevator (list (first external)))
-            (lens-transform elevator-state-external-requests-lens _ rest))
-          current-elevator)
-        current-elevator)
-      (define elevator _))
-    (hash-set hash id (elevator-attributes-refresh elevator))))
+      (map (curry lens-view servicing-lens) elevators)
+      flatten
+      (filter external-command? _)
+      (remove* _ (flatten (map (curry lens-view external-lens) elevators)))
+      flatten)))
+
+(define (compute-direction-of-travel state)
+  (compute-direction-to-travel state (first-or-empty (elevator-state-servicing-requests state))))
+
+(define (compute-direction-to-travel state request)
+  (let ([position  (elevator-state-position state)])
+    (cond
+      ([empty? request]                     'halt)
+      ([< position (command-floor request)] 'up)
+      ([> position (command-floor request)] 'down)
+      (else                                 'halt))))
+
+(define (score-elevator-request state request)
+  (abs (- (elevator-state-position state) (external-command-floor request))))
+
+(define (id-score-sort id-score-1 id-score-2)
+  (cond
+    ([< (second id-score-1) (second id-score-2)] #t)
+    ([> (second id-score-1) (second id-score-2)] #f)
+    ([string<? (first id-score-1) (first id-score-2)] #t)
+    ([string>=? (first id-score-1) (first id-score-2)] #f)))
+
+(define (process-available-external-requests hash requests)
+  (define state-lens elevator-attributes-state-lens)
+  (let ([top-request (first-or-empty requests)])
+    (if (empty? top-request)
+      hash
+      (begin
+        (let ([best-id
+            (~>
+              (map (curry lens-view state-lens) (hash-values hash))
+              (map (lambda (x) (list x (compute-direction-of-travel x))) _)
+              (map (lambda (x) (append x (list (compute-direction-to-travel (first x) top-request)))) _)
+              (filter (lambda (x) (or (symbol=? (second x) (third x)) (symbol=? (second x) 'halt))) _)
+              (map first _)
+              (map (lambda (x) (list (elevator-state-id x) (score-elevator-request x top-request))) _)
+              (sort id-score-sort)
+              first-or-empty
+              first-or-empty)])
+          (process-available-external-requests
+            (if (empty? best-id)
+              hash
+              (lens-transform (lens-compose elevator-state-servicing-requests-lens elevator-attributes-state-lens (hash-ref-lens best-id)) hash (lambda (x) (cons top-request x))))
+            (rest requests))
+          )))))
+
+(define (try-self-assign-external-task hash)
+  (process-available-external-requests hash (compute-available-external-requests hash)))
 
 (define (command-floor command)
   (cond
