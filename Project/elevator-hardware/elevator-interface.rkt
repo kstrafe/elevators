@@ -25,6 +25,9 @@
          racket/runtime-path
          (for-syntax racket/list racket/string racket/syntax syntax/to-string)) ; Requirements for syntax transformers
 
+;; Controls whether the hardware should look for a real or simulated elevator
+(define simulated #t)
+
 (define (elevator-hardware-open-door) (elevator-hardware-set-door-open-lamp 1))
 (define (elevator-hardware-close-door) (elevator-hardware-set-door-open-lamp 0))
 
@@ -38,6 +41,7 @@
 (define driver (ffi-lib library))
 
 ;; Define the enumerations used by the library
+(define elevator-hardware-type (_enum '(ET_Comedi ET_Simulation)))
 (define elevator-hardware-motor-direction (_enum '(DIRN_DOWN = -1 DIRN_STOP DIRN_UP)))
 (define elevator-hardware-button-list '(BUTTON_CALL_UP BUTTON_CALL_DOWN BUTTON_COMMAND))
 (define elevator-hardware-button-type (_enum elevator-hardware-button-list))
@@ -61,7 +65,7 @@
 
 ;; Create all C bindings
 (elevator-hardwares
-  (init (_fun -> _void))
+  (init (_fun elevator-hardware-type -> _void))
   (set-motor-direction (_fun elevator-hardware-motor-direction -> _void))
   (set-button-lamp (_fun elevator-hardware-button-type _int _int -> _void))
   (set-floor-indicator (_fun _int -> _void))
@@ -72,4 +76,6 @@
   (get-stop-signal (_fun -> _int))
   (get-obstruction-signal (_fun -> _int)))
 
-(elevator-hardware-init)
+(if simulated
+  (elevator-hardware-init `ET_Simulation)
+  (elevator-hardware-init `ET_Comedi))
