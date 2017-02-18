@@ -13,18 +13,19 @@
 ;; and performs side effects with it, returning a new
 ;; hash-table of elevators.
 (define (core elevators)
+  ; (trce elevators)
   (if (or (empty? elevators) (not (hash-has-key? elevators id)))
     (core (hash id (make-empty-elevator id name)))
     (begin
-      (broadcast (lens-view state-lens elevators))
+      (broadcast (lens-view this:state elevators))
       (sleep iteration-sleep-time)
-      (set-floor-indicator-using-elevator (lens-view state-lens elevators))
-      (if (> (lens-view opening-lens elevators) 0)
+      (set-floor-indicator-using-elevator (lens-view this:state elevators))
+      (if (> (lens-view this:opening elevators) 0)
         (begin
           (elevator-hardware:open-door)
-          (lens-transform opening-lens elevators sub1))
+          (lens-transform this:opening elevators sub1))
         (let ([elevators* (fold-buttons-into-elevators (pop-button-states) elevators)])
-          (set-lights-using-commands (lens-view state-lens elevators*))
+          (set-lights-using-commands (lens-view this:state elevators*))
           (elevator-hardware:close-door)
           ; (trce elevators*)
           (~>
@@ -35,11 +36,10 @@
             remove-dead-elevators
             decrement-time-to-live
             ; trce* ; You can add a trce* anywhere inside a ~> to print the state
-            (update-position position-lens)
+            update-position
             unify-requests
             prune-call-requests-that-are-done
             try-self-assign-external-task
-            (sort-servicing servicing-lens state-lens)
-            ; trce*
-            (set-motor-direction-to-task! servicing-lens)
-            (prune-servicing-requests servicing-lens done-lens opening-lens position-lens command-requests-lens)))))))
+            sort-servicing
+            set-motor-direction-to-task!
+            prune-servicing-requests))))))

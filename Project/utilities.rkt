@@ -3,8 +3,7 @@
 (provide (all-defined-out))
 
 (require lens racket/fasl racket/hash racket/pretty racket/syntax rackunit rackunit/text-ui threading
-  "data-structures.rkt" "motor.rkt" "logger.rkt"
-  (for-syntax racket/syntax))
+  "data-structures.rkt" "motor.rkt" "logger.rkt" (for-syntax racket/syntax))
 
 ;; Maps each value in a hash-table
 (define (map-hash-table hash function)
@@ -38,12 +37,11 @@
 
 ;; Decrement all 'time-to-live's
 (define (decrement-time-to-live elevators)
-  (map-hash-table elevators (lambda (x)
-    (lens-transform attributes-time-to-live-lens x sub1))))
+  (map-hash-table elevators (lambda (x) (lens-transform attributes-time-to-live-lens x sub1))))
 
 ;; Update our own current state
 (define (insert-self-into-elevators elevators folded-elevators)
-  (lens-set state-lens elevators (lens-view state-lens folded-elevators)))
+  (lens-set this:state elevators (lens-view this:state folded-elevators)))
 
 (define (same-request? left right)
   (and (symbol=? (request-direction left) (request-direction right))
@@ -91,7 +89,7 @@
   (map-hash-table all-elevators (lambda (x)
     (lens-set accessor x unified-dones))))
 
-(define done-of-hash (lens-compose state-completed-call-requests-lens attributes-state-lens))
+(define done-of-hash (lens-compose state-done-requests-lens attributes-state-lens))
 (define call-of-hash (lens-compose state-call-requests-lens attributes-state-lens))
 (define (unify-requests all-elevators)
   (~>
@@ -109,41 +107,45 @@
 ;; Add the button presses (both external and internal) to the current elevator's state. Then put the current elevator state into the hash-map of all-elevators
 (define (fold-buttons-into-elevators buttons elevators)
   (let* ([command-requests   (filter command-request? buttons)]
-         [elevators* (lens-transform command-requests-lens elevators (curry prune-requests command-requests))]
+         [elevators* (lens-transform this:command elevators (curry prune-requests command-requests))]
          [call-requests   (filter call-request? buttons)]
-         [elevators** (lens-transform call-lens elevators* (curry prune-requests call-requests))])
+         [elevators** (lens-transform this:call elevators* (curry prune-requests call-requests))])
     elevators**))
 
 (define (make-empty-elevator id name)
   (attributes-refresh (state id name 0 empty empty empty empty 0)))
 
-(define (update-position hash lens)
+(define (update-position hash)
   (let ([floor (any-new-floor-reached?)])
     (if floor
-      (lens-set lens hash floor)
+      (lens-set this:position hash floor)
       hash)))
 
 (define (compute-available-call-requests hash)
-  (define servicing-lens (lens-compose state-servicing-requests-lens attributes-state-lens))
-  (define external-lens  (lens-compose state-call-requests-lens attributes-state-lens))
+  (define other:servicing (lens-compose state-servicing-requests-lens attributes-state-lens))
+  (define other:call      (lens-compose state-call-requests-lens attributes-state-lens))
   (let ([elevators (hash-values hash)])
     (~>
-      (map (curry lens-view servicing-lens) elevators)
+      (map (curry lens-view other:servicing) elevators)
       flatten
+      (remove* _ (flatten (map (curry lens-view other:call) elevators)))
       (filter call-request? _)
-      (remove* _ (flatten (map (curry lens-view external-lens) elevators)))
       flatten)))
 
 (define (compute-direction-of-travel state)
-  (compute-direction-to-travel state (first-or-empty (state-servicing-requests state))))
+  (compute-direction-to-travel state (state-servicing-requests state)))
 
-(define (compute-direction-to-travel state request)
-  (let ([position (state-position state)])
-    (cond
-      ([empty? request]                     'halt)
-      ([< position (request-floor request)] 'up)
-      ([> position (request-floor request)] 'down)
-      (else                                 'halt))))
+(define (compute-direction-to-travel state requests)
+  (if (empty? requests)
+    'halt
+    (let ([position (state-position state)]
+          [request  (first requests)])
+      (cond
+        ([< position (request-floor request)] 'up)
+        ([> position (request-floor request)] 'down)
+        ; ([symbol=? (request-direction request) 'up] 'up)
+        ; ([symbol=? (request-direction request) 'down] 'down)
+        (else                                 (compute-direction-to-travel state (rest requests)))))))
 
 (define (score-elevator-request state request)
   (abs (- (state-position state) (request-floor request))))
@@ -155,21 +157,33 @@
     ([string<? (first id-score-1) (first id-score-2)] #t)
     ([string>=? (first id-score-1) (first id-score-2)] #f)))
 
-(define (reverse-cons lst item)
-  (append lst (list item)))
+(define (elevator-request-direction elevator)
+  (let ([request (first-or-empty (state-servicing-requests elevator))])
+    (if (empty? request)
+      'halt
+      (request-direction request))))
 
 (define (process-available-call-requests hash requests)
-  (define state-lens attributes-state-lens)
+  (define any:state attributes-state-lens)
   (let ([top-request (first-or-empty requests)])
     (if (empty? top-request)
       hash
       (begin
         (let ([best-id
             (~>
-              (map (curry lens-view state-lens) (hash-values hash))
+              (map (curry lens-view any:state) (hash-values hash))
               (map (lambda (x) (list x (compute-direction-of-travel x))) _)
-              (map (lambda (x) (append x (list (compute-direction-to-travel (first x) top-request)))) _)
-              (filter (lambda (x) (or (symbol=? (second x) (third x)) (symbol=? (second x) 'halt))) _)
+              (map (lambda (x) (append x (list (compute-direction-to-travel (first x) (list top-request))))) _)
+              (map (lambda (x) (append x (list (request-direction top-request)))) _)
+              (map (lambda (x) (append x (list (elevator-request-direction (first x))))) _)
+              trce*
+              (filter
+                (lambda (x)
+                  (or
+                    (and
+                      (symbol=? (second x) (third x))
+                      (symbol=? (second x) (fourth x)))
+                    (symbol=? (second x) 'halt))) _)
               (map first _)
               (map (lambda (x) (list (state-id x) (score-elevator-request x top-request))) _)
               (sort id-score-sort)
@@ -178,14 +192,14 @@
           (process-available-call-requests
             (if (empty? best-id)
               hash
-              (lens-transform (lens-compose state-servicing-requests-lens attributes-state-lens (hash-ref-lens best-id)) hash (lambda (x) (reverse-cons x top-request))))
+              (lens-transform (other:servicing best-id) hash (curry cons top-request)))
             (rest requests))
           )))))
 
 (define (try-self-assign-external-task hash)
   (process-available-call-requests hash (compute-available-call-requests hash)))
 
-(define (set-motor-direction-to-task! hash lens)
+(define (set-motor-direction-to-task! hash)
   ;; Calls move-to-floor depending on the top of the 'servicing-requests'
   ;; field in the current elevator.
   ;; If the current floor is the servicing floor, then
@@ -194,7 +208,7 @@
   ;
   ;; The ! at the end of the function name denotes side-effect without altering hash.
   ;; Maybe we should in general separate side effects from changing the hash table.
-  (let ([servicing-requests (lens-view lens hash)])
+  (let ([servicing-requests (lens-view this:servicing hash)])
     (when (not (empty? servicing-requests))
       (~>
         (first servicing-requests)
@@ -202,51 +216,34 @@
         move-to-floor)))
   hash)
 
-(define (first-or-empty list)
-  (if (empty? list)
-    empty
-    (first list)))
+(define (first-or-empty list) (if (empty? list) empty (first list)))
 
-(define (less-than cutoff floor-1 floor-2)
-  (cond
-    ([<= floor-2 cutoff] #t)
-    ([<= floor-1 cutoff] #f)
-    (else (< floor-1 floor-2))))
-
-(define (more-than cutoff floor-1 floor-2)
-  (cond
-    ([>= floor-2 cutoff] #t)
-    ([>= floor-1 cutoff] #f)
-    (else (> floor-1 floor-2))))
-
-(define (sort-servicing hash servicing-lens state-lens)
-  ; (dbug hash)
-  (~>
-    (let ([direction (compute-direction-of-travel (lens-view state-lens hash))])
-      (lens-transform servicing-lens hash (lambda (x)
-        ; (trce direction)
-        (if (symbol=? direction 'halt)
-          x
-          (sort x
-            (cond
-              ;; This is correct, but we need to exclude floors above some levels :O
-              ([symbol=? direction 'up] (curry less-than (state-position (lens-view state-lens hash))))
-              ([symbol=? direction 'down] (curry more-than (state-position (lens-view state-lens hash)))))
-            #:key request-floor)))))
-    ;trce*
+(define (sort-servicing hash)
+  (let ([direction (compute-direction-of-travel (lens-view this:state hash))])
+    (lens-transform this:servicing hash
+      (lambda (x)
+        (~>
+          (if (symbol=? direction 'halt)
+            x
+            (sort x
+              (cond
+                ([symbol=? direction 'up] <)
+                ([symbol=? direction 'down] >))
+              #:key request-floor))
+          )))
     ))
 
-(define (prune-servicing-requests hash servicing-lens done-lens opening-lens pos-lens internal-lens)
-  (let ([servicing (first-or-empty (lens-view servicing-lens hash))])
+(define (prune-servicing-requests hash)
+  (let ([servicing (first-or-empty (lens-view this:servicing hash))])
     (if (not (empty? servicing))
-      (if (= (lens-view pos-lens hash) (request-floor servicing))
+      (if (= (lens-view this:position hash) (request-floor servicing))
         ;; We know that the motor has tuned into this floor, so it's safe to remove (we're not in transit)
         (~>
-          (lens-transform servicing-lens hash rest)
-          (lens-transform done-lens      _ (lambda (done) (if (call-request? servicing) (cons servicing done) done)))
-          (lens-transform internal-lens  _ (lambda (internal) (if (command-request? servicing) (remove servicing internal) internal)))
-          (lens-set opening-lens         _ 20)
-          (prune-servicing-requests servicing-lens done-lens opening-lens pos-lens internal-lens))
+          (lens-transform this:servicing hash rest)
+          (lens-transform this:done      _ (lambda (done) (if (call-request? servicing) (cons servicing done) done)))
+          (lens-transform this:command  _ (lambda (internal) (if (command-request? servicing) (remove servicing internal) internal)))
+          (lens-set this:opening         _ 20)
+          prune-servicing-requests)
         hash)
       hash)))
 

@@ -13,7 +13,7 @@
 
 (struct/lens-es
   (attributes  (state time-to-live timestamp))
-  (state       (id name position servicing-requests call-requests command-requests completed-call-requests opening-time))
+  (state       (id name position servicing-requests call-requests command-requests done-requests opening-time))
   (request     (direction floor timestamp)))
 
 (define (command-request? request) (symbol=? (request-direction request) 'command))
@@ -23,10 +23,12 @@
 (define-values (id name) (generate-or-load-identity))
 (info id name)
 
-(define state-lens (lens-compose attributes-state-lens (hash-ref-lens id)))
-(define opening-lens (lens-compose state-opening-time-lens attributes-state-lens (hash-ref-lens id)))
-(define command-requests-lens (lens-compose state-command-requests-lens state-lens))
-(define call-lens (lens-compose state-call-requests-lens state-lens))
-(define position-lens (lens-compose state-position-lens state-lens))
-(define done-lens (lens-compose state-completed-call-requests-lens state-lens))
-(define servicing-lens (lens-compose state-servicing-requests-lens state-lens))
+(define this:state     (lens-compose attributes-state-lens (hash-ref-lens id)))
+(define this:opening   (lens-compose state-opening-time-lens attributes-state-lens (hash-ref-lens id)))
+(define this:command   (lens-compose state-call-requests-lens this:state))
+(define this:call      (lens-compose state-call-requests-lens this:state))
+(define this:position  (lens-compose state-position-lens this:state))
+(define this:done      (lens-compose state-done-requests-lens this:state))
+(define this:servicing (lens-compose state-servicing-requests-lens this:state))
+
+(define (other:servicing id) (lens-compose (lens-compose state-servicing-requests-lens attributes-state-lens (hash-ref-lens id))))
