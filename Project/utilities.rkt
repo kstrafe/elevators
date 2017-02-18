@@ -193,8 +193,8 @@
     0
     (let ([command (first servicing-requests)])
       (cond
-        [(external-command? command) (sgn (- (external-command-floor command) position))]
-        [(internal-command? command) (sgn (- (internal-command-floor command) position))]))))
+        [(external-command? command) (- (external-command-floor command) position)]
+        [(internal-command? command) (- (internal-command-floor command) position)]))))
 
 (define (compute-servicing-of-internal-requests hash position-lens servicing-lens internal-requests-lens opening-lens)
   (let ([position (lens-view position-lens hash)]
@@ -202,15 +202,14 @@
         [internal-requests (lens-view internal-requests-lens hash)]
         [opening (lens-view opening-lens hash)])
     (trce servicing-requests internal-requests)
-    ;; Find direction of travel based on position, servicing and door
-    (let ([direction (get-direction position servicing-requests opening)])
-      (trce direction)
-      (if (= direction 0)
-        ;; TODO Put this request into servicing of the current hash and return it for further use
-        (let ([oldest-internal-request (foldl (lambda (c s) (if (> (internal-command-timestamp c) (internal-command-timestamp s)) c s)) (first internal-requests) (rest internal-requests))])
-          (trce internal-requests))
-        #f)
-      hash)))
+    ;; Move internal request to servicing request based on direction of travel
+    (let* ([direction (get-direction position servicing-requests opening)]
+           [hash* (if (and (not (empty? internal-requests)) (= direction 0))
+                    (let ([oldest-internal-request (foldl (lambda (c s) (if (> (internal-command-timestamp c) (internal-command-timestamp s)) c s)) (first internal-requests) (rest internal-requests))])
+                      (lens-set servicing-lens hash (cons oldest-internal-request servicing-requests)))
+                    hash)]
+          )
+      )))
 
 (define (command-floor command)
   (cond
