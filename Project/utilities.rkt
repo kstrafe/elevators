@@ -196,20 +196,43 @@
         [(external-command? command) (- (external-command-floor command) position)]
         [(internal-command? command) (- (internal-command-floor command) position)]))))
 
+; (define (eligible-internal-requests position direction internal-requests opening)
+;   (foldl (lambda (c s)
+;            )
+;          empty
+;          internal-requests))
+
 (define (compute-servicing-of-internal-requests hash position-lens servicing-lens internal-requests-lens opening-lens)
   (let ([position (lens-view position-lens hash)]
         [servicing-requests (lens-view servicing-lens hash)]
         [internal-requests (lens-view internal-requests-lens hash)]
         [opening (lens-view opening-lens hash)])
     (trce servicing-requests internal-requests)
-    (~>
-      ;; Move internal request to servicing request based on direction of travel
-      (if (and (not (empty? internal-requests)) (= (get-direction position servicing-requests) 0))
-        (let ([oldest-internal-request (foldl (lambda (c s) (if (< (internal-command-timestamp c) (internal-command-timestamp s)) c s)) (first internal-requests) (rest internal-requests))])
-          (lens-set servicing-lens hash (remove-duplicates (cons oldest-internal-request servicing-requests))))
-        hash)
-      trce*
-    )))
+    (let ([direction (get-direction position servicing-requests)])
+      (~>
+        ;; Move internal request to servicing request based on direction of travel
+        (if (and (not (empty? internal-requests)) (= direction 0))
+          (let ([oldest-internal-request (foldl (lambda (c s) (if (< (internal-command-timestamp c) (internal-command-timestamp s)) c s)) (first internal-requests) (rest internal-requests))])
+            (lens-set servicing-lens hash (remove-duplicates (cons oldest-internal-request servicing-requests))))
+          hash)
+        trce*
+        ; (lens-set servicing-lens _ (sort (append (eligible-internal-requests position direction internal-requests opening) servicing-requests) <))
+        ;; TODO Fix this a lot; fix let direction*; cleanup predicate on sort; still a duplicate in servicing-requests, remove it
+        (lens-set servicing-lens _
+          (sort
+            (append (filter (lambda (x)
+                              (let ([direction* (get-direction position servicing-requests)])
+                                (cond
+                                  [(= direction* 0) #t]
+                                  [(and (positive? direction*) (> (internal-command-floor x) position))]
+                                  [(and (negative? direction*) (< (internal-command-floor x) position))])))
+                      internal-requests)
+              (remove-duplicates servicing-requests))
+            (lambda (a b)
+              (if (positive? (get-direction position servicing-requests))
+                (if (< (internal-command-floor a) (internal-command-floor b)) a b)
+                (if (>= (internal-command-floor a) (internal-command-floor b)) a b)))))
+        ))))
 
 (define (command-floor command)
   (cond
