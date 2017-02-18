@@ -16,14 +16,14 @@
 
 ;; Sets the floor indicator based on this elevator's position
 (define (set-floor-indicator-using-elevator elevator)
-  (elevator-hardware-set-floor-indicator (elevator-state-position elevator)))
+  (elevator-hardware-set-floor-indicator (state-position elevator)))
 
 ;; Set the current elevator's lights using the button states
 (define (set-lights-using-commands elevator)
-  (let* ([ext-cmds       (elevator-state-external-requests elevator)]
+  (let* ([ext-cmds       (state-external-requests elevator)]
          [ext-cmds-up    (map request-floor (filter (lambda (x) (symbol=? (request-direction x) 'up)) ext-cmds))]
          [ext-cmds-down  (map request-floor (filter (lambda (x) (symbol=? (request-direction x) 'down)) ext-cmds))]
-         [int-cmds       (map request-floor (elevator-state-internal-requests elevator))])
+         [int-cmds       (map request-floor (state-internal-requests elevator))])
     (for ([floor (range floor-count)])
       (elevator-hardware-set-button-lamp 'BUTTON_COMMAND   floor (if (ormap (curry = floor) int-cmds) 1 0))
       (elevator-hardware-set-button-lamp 'BUTTON_CALL_UP   floor (if (ormap (curry = floor) ext-cmds-up) 1 0))

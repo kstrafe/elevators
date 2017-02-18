@@ -1,19 +1,6 @@
 #lang racket
 
-(provide
-  prune-external-requests-that-are-done
-  try-self-assign-external-task
-  set-motor-direction-to-task!
-  update-position
-  prune-servicing-requests
-  remove-dead-elevators
-  hash-remove-predicate
-  sort-servicing
-  elevator-attributes-refresh
-  unify-requests
-  make-empty-elevator
-  decrement-time-to-live filter-newest-to-hash unify-messages-and-elevators insert-self-into-elevators
-  prune-requests fold-buttons-into-elevators)
+(provide (all-defined-out))
 
 (require lens racket/fasl racket/hash racket/pretty racket/syntax rackunit rackunit/text-ui threading
   "data-structures.rkt" "motor.rkt" "logger.rkt"
@@ -27,32 +14,32 @@
 (define (hash-remove-predicate hash predicate)
   (foldl (lambda (x s) (if (predicate (hash-ref s x)) (hash-remove s x) s)) hash (hash-keys hash)))
 
-(define (elevator-attributes-refresh state)
-  (elevator-attributes state time-to-live (current-inexact-milliseconds)))
+(define (attributes-refresh state)
+  (attributes state time-to-live (current-inexact-milliseconds)))
 
 ;; Take messages, make into hash-set of attributes with ttl reset
 ;; TODO Clean up this dirty code if possible
 (define (filter-newest-to-hash messages)
   (foldl (lambda (c s)
     (let* ([state (first c)]
-           [id (elevator-state-id state)]
+           [id (state-id state)]
            [timestamp (last c)]
-           [elev-ts elevator-attributes-timestamp])
+           [elev-ts attributes-timestamp])
       (if (or (not (hash-has-key? s id)) (> timestamp (elev-ts (hash-ref s id))))
-        (hash-set s id (elevator-attributes state time-to-live timestamp))
+        (hash-set s id (attributes state time-to-live timestamp))
         s)))
     (make-immutable-hash)
     messages))
 
 ;; Discard messages older than current from all-elevators
 (define (unify-messages-and-elevators messages elevators)
-  (let ([ts elevator-attributes-timestamp])
+  (let ([ts attributes-timestamp])
     (hash-union messages elevators #:combine (lambda (a b) (if (> (ts a) (ts b)) a b)))))
 
 ;; Decrement all 'time-to-live's
 (define (decrement-time-to-live elevators)
   (map-hash-table elevators (lambda (x)
-    (lens-transform elevator-attributes-time-to-live-lens x sub1))))
+    (lens-transform attributes-time-to-live-lens x sub1))))
 
 ;; Update our own current state
 (define (insert-self-into-elevators elevators folded-elevators)
@@ -104,8 +91,8 @@
   (map-hash-table all-elevators (lambda (x)
     (lens-set accessor x unified-dones))))
 
-(define done-of-hash (lens-compose elevator-state-done-requests-lens elevator-attributes-state-lens))
-(define external-of-hash (lens-compose elevator-state-external-requests-lens elevator-attributes-state-lens))
+(define done-of-hash (lens-compose state-done-requests-lens attributes-state-lens))
+(define external-of-hash (lens-compose state-external-requests-lens attributes-state-lens))
 (define (unify-requests all-elevators)
   (~>
     (unify-requests* all-elevators done-of-hash)
@@ -119,8 +106,6 @@
     (map-hash-table all-elevators (lambda (x)
       (lens-set external-of-hash x external*)))))
 
-(define (command-request? request) (symbol=? (request-direction request) 'command))
-(define (call-request? request) (not (symbol=? (request-direction request) 'command)))
 ;; Add the button presses (both external and internal) to the current elevator's state. Then put the current elevator state into the hash-map of all-elevators
 (define (fold-buttons-into-elevators buttons elevators)
   (let* ([internal-requests   (filter command-request? buttons)]
@@ -130,7 +115,7 @@
     elevators**))
 
 (define (make-empty-elevator id name)
-  (elevator-attributes-refresh (elevator-state id name 0 empty empty empty empty 0)))
+  (attributes-refresh (state id name 0 empty empty empty empty 0)))
 
 (define (update-position hash lens)
   (let ([floor (any-new-floor-reached?)])
@@ -139,8 +124,8 @@
       hash)))
 
 (define (compute-available-external-requests hash)
-  (define servicing-lens (lens-compose elevator-state-servicing-requests-lens elevator-attributes-state-lens))
-  (define external-lens  (lens-compose elevator-state-external-requests-lens elevator-attributes-state-lens))
+  (define servicing-lens (lens-compose state-servicing-requests-lens attributes-state-lens))
+  (define external-lens  (lens-compose state-external-requests-lens attributes-state-lens))
   (let ([elevators (hash-values hash)])
     (~>
       (map (curry lens-view servicing-lens) elevators)
@@ -150,10 +135,10 @@
       flatten)))
 
 (define (compute-direction-of-travel state)
-  (compute-direction-to-travel state (first-or-empty (elevator-state-servicing-requests state))))
+  (compute-direction-to-travel state (first-or-empty (state-servicing-requests state))))
 
 (define (compute-direction-to-travel state request)
-  (let ([position  (elevator-state-position state)])
+  (let ([position  (state-position state)])
     (cond
       ([empty? request]                     'halt)
       ([< position (request-floor request)] 'up)
@@ -161,7 +146,7 @@
       (else                                 'halt))))
 
 (define (score-elevator-request state request)
-  (abs (- (elevator-state-position state) (request-floor request))))
+  (abs (- (state-position state) (request-floor request))))
 
 (define (id-score-sort id-score-1 id-score-2)
   (cond
@@ -174,7 +159,7 @@
   (append lst (list item)))
 
 (define (process-available-external-requests hash requests)
-  (define state-lens elevator-attributes-state-lens)
+  (define state-lens attributes-state-lens)
   (let ([top-request (first-or-empty requests)])
     (if (empty? top-request)
       hash
@@ -186,14 +171,14 @@
               (map (lambda (x) (append x (list (compute-direction-to-travel (first x) top-request)))) _)
               (filter (lambda (x) (or (symbol=? (second x) (third x)) (symbol=? (second x) 'halt))) _)
               (map first _)
-              (map (lambda (x) (list (elevator-state-id x) (score-elevator-request x top-request))) _)
+              (map (lambda (x) (list (state-id x) (score-elevator-request x top-request))) _)
               (sort id-score-sort)
               first-or-empty
               first-or-empty)])
           (process-available-external-requests
             (if (empty? best-id)
               hash
-              (lens-transform (lens-compose elevator-state-servicing-requests-lens elevator-attributes-state-lens (hash-ref-lens best-id)) hash (lambda (x) (reverse-cons x top-request))))
+              (lens-transform (lens-compose state-servicing-requests-lens attributes-state-lens (hash-ref-lens best-id)) hash (lambda (x) (reverse-cons x top-request))))
             (rest requests))
           )))))
 
@@ -245,8 +230,8 @@
           (sort x
             (cond
               ;; This is correct, but we need to exclude floors above some levels :O
-              ([symbol=? direction 'up] (curry less-than (elevator-state-position (lens-view state-lens hash))))
-              ([symbol=? direction 'down] (curry more-than (elevator-state-position (lens-view state-lens hash)))))
+              ([symbol=? direction 'up] (curry less-than (state-position (lens-view state-lens hash))))
+              ([symbol=? direction 'down] (curry more-than (state-position (lens-view state-lens hash)))))
             #:key request-floor)))))
     ;trce*
     ))
@@ -266,4 +251,4 @@
       hash)))
 
 (define (remove-dead-elevators elevators)
-  (hash-remove-predicate elevators (lambda (x) (<= (elevator-attributes-time-to-live x) 0))))
+  (hash-remove-predicate elevators (lambda (x) (<= (attributes-time-to-live x) 0))))
