@@ -188,7 +188,7 @@
       (define elevator _))
     (hash-set hash id (elevator-attributes-refresh elevator))))
 
-(define (get-direction position servicing-requests opening)
+(define (get-direction position servicing-requests)
   (if (empty? servicing-requests)
     0
     (let ([command (first servicing-requests)])
@@ -202,14 +202,13 @@
         [internal-requests (lens-view internal-requests-lens hash)]
         [opening (lens-view opening-lens hash)])
     (trce servicing-requests internal-requests)
-    ;; Move internal request to servicing request based on direction of travel
-    (let* ([direction (get-direction position servicing-requests opening)]
-           [hash* (if (and (not (empty? internal-requests)) (= direction 0))
-                    (let ([oldest-internal-request (foldl (lambda (c s) (if (> (internal-command-timestamp c) (internal-command-timestamp s)) c s)) (first internal-requests) (rest internal-requests))])
-                      (lens-set servicing-lens hash (cons oldest-internal-request servicing-requests)))
-                    hash)]
-          )
-      )))
+    (~>
+      ;; Move internal request to servicing request based on direction of travel
+      (if (and (not (empty? internal-requests)) (= (get-direction position servicing-requests) 0))
+        (let ([oldest-internal-request (foldl (lambda (c s) (if (> (internal-command-timestamp c) (internal-command-timestamp s)) c s)) (first internal-requests) (rest internal-requests))])
+          (lens-set servicing-lens hash (cons oldest-internal-request servicing-requests)))
+        hash)
+    )))
 
 (define (command-floor command)
   (cond
