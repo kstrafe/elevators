@@ -91,27 +91,27 @@
   (map-hash-table all-elevators (lambda (x)
     (lens-set accessor x unified-dones))))
 
-(define done-of-hash (lens-compose state-done-requests-lens attributes-state-lens))
-(define external-of-hash (lens-compose state-external-requests-lens attributes-state-lens))
+(define done-of-hash (lens-compose state-completed-call-requests-lens attributes-state-lens))
+(define call-of-hash (lens-compose state-call-requests-lens attributes-state-lens))
 (define (unify-requests all-elevators)
   (~>
     (unify-requests* all-elevators done-of-hash)
-    (unify-requests* external-of-hash)))
+    (unify-requests* call-of-hash)))
 
-(define (prune-external-requests-that-are-done all-elevators)
+(define (prune-call-requests-that-are-done all-elevators)
   (let* ([state        (first (hash-values all-elevators))]
          [done         (lens-view done-of-hash state)]
-         [external     (lens-view external-of-hash state)]
+         [external     (lens-view call-of-hash state)]
          [external*    (foldr (lambda (x s) (if (ormap (curry equal? x) done) s (cons x s))) empty external)])
     (map-hash-table all-elevators (lambda (x)
-      (lens-set external-of-hash x external*)))))
+      (lens-set call-of-hash x external*)))))
 
 ;; Add the button presses (both external and internal) to the current elevator's state. Then put the current elevator state into the hash-map of all-elevators
 (define (fold-buttons-into-elevators buttons elevators)
-  (let* ([internal-requests   (filter command-request? buttons)]
-         [elevators* (lens-transform internal-requests-lens elevators (curry prune-requests internal-requests))]
-         [external-requests   (filter call-request? buttons)]
-         [elevators** (lens-transform external-requests-lens elevators* (curry prune-requests external-requests))])
+  (let* ([command-requests   (filter command-request? buttons)]
+         [elevators* (lens-transform command-requests-lens elevators (curry prune-requests command-requests))]
+         [call-requests   (filter call-request? buttons)]
+         [elevators** (lens-transform call-lens elevators* (curry prune-requests call-requests))])
     elevators**))
 
 (define (make-empty-elevator id name)
@@ -123,9 +123,9 @@
       (lens-set lens hash floor)
       hash)))
 
-(define (compute-available-external-requests hash)
+(define (compute-available-call-requests hash)
   (define servicing-lens (lens-compose state-servicing-requests-lens attributes-state-lens))
-  (define external-lens  (lens-compose state-external-requests-lens attributes-state-lens))
+  (define external-lens  (lens-compose state-call-requests-lens attributes-state-lens))
   (let ([elevators (hash-values hash)])
     (~>
       (map (curry lens-view servicing-lens) elevators)
@@ -138,7 +138,7 @@
   (compute-direction-to-travel state (first-or-empty (state-servicing-requests state))))
 
 (define (compute-direction-to-travel state request)
-  (let ([position  (state-position state)])
+  (let ([position (state-position state)])
     (cond
       ([empty? request]                     'halt)
       ([< position (request-floor request)] 'up)
@@ -158,7 +158,7 @@
 (define (reverse-cons lst item)
   (append lst (list item)))
 
-(define (process-available-external-requests hash requests)
+(define (process-available-call-requests hash requests)
   (define state-lens attributes-state-lens)
   (let ([top-request (first-or-empty requests)])
     (if (empty? top-request)
@@ -175,7 +175,7 @@
               (sort id-score-sort)
               first-or-empty
               first-or-empty)])
-          (process-available-external-requests
+          (process-available-call-requests
             (if (empty? best-id)
               hash
               (lens-transform (lens-compose state-servicing-requests-lens attributes-state-lens (hash-ref-lens best-id)) hash (lambda (x) (reverse-cons x top-request))))
@@ -183,7 +183,7 @@
           )))))
 
 (define (try-self-assign-external-task hash)
-  (process-available-external-requests hash (compute-available-external-requests hash)))
+  (process-available-call-requests hash (compute-available-call-requests hash)))
 
 (define (set-motor-direction-to-task! hash lens)
   ;; Calls move-to-floor depending on the top of the 'servicing-requests'

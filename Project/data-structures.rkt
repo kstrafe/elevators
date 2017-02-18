@@ -13,7 +13,7 @@
 
 (struct/lens-es
   (attributes  (state time-to-live timestamp))
-  (state       (id name position servicing-requests external-requests internal-requests done-requests opening-time))
+  (state       (id name position servicing-requests call-requests command-requests completed-call-requests opening-time))
   (request     (direction floor timestamp)))
 
 (define (command-request? request) (symbol=? (request-direction request) 'command))
@@ -25,8 +25,8 @@
 
 (define state-lens (lens-compose attributes-state-lens (hash-ref-lens id)))
 (define opening-lens (lens-compose state-opening-time-lens attributes-state-lens (hash-ref-lens id)))
-(define internal-requests-lens (lens-compose state-internal-requests-lens state-lens))
-(define external-requests-lens (lens-compose state-external-requests-lens state-lens))
+(define command-requests-lens (lens-compose state-command-requests-lens state-lens))
+(define call-lens (lens-compose state-call-requests-lens state-lens))
 (define position-lens (lens-compose state-position-lens state-lens))
-(define done-lens (lens-compose state-done-requests-lens state-lens))
+(define done-lens (lens-compose state-completed-call-requests-lens state-lens))
 (define servicing-lens (lens-compose state-servicing-requests-lens state-lens))

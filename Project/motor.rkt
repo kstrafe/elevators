@@ -24,11 +24,11 @@
 (define poll (thread (lambda ()
   (let loop ([target-floor 0] [previous-floor 1]) ; These values make the elevator go down to the ground floor when started
     (let* ([desired-floor  (async-channel-try-get-last motor-channel target-floor)]
-           [current        (elevator-hardware-get-floor-sensor-signal)]
+           [current        (elevator-hardware:get-floor-sensor-signal)]
            [current*       (if (negative? current) previous-floor current)]
            [difference     (- target-floor current*)])
       (when (not (= previous-floor current*)) (async-channel-put status-channel current*))
-      (elevator-hardware-set-motor-direction
+      (elevator-hardware:set-motor-direction
         (cond
           [(positive? difference) 'DIRN_UP]
           [(zero?     difference) 'DIRN_STOP]
