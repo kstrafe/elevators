@@ -4,18 +4,20 @@
 
 (require lens "identity-generator.rkt" "logger.rkt")
 
-(define floor-count 4)
-(define iteration-sleep-time 0.1)
-(define time-to-live 6)
+(define floor-count           4)
+(define iteration-sleep-time  0.1)
+(define time-to-live          (ceiling (/ 6 iteration-sleep-time)))
 
 (define-syntax-rule (struct/lens-es (name (attributes ...) keywords ...) ...)
   (begin (struct/lens name (attributes ...) #:prefab keywords ...) ...))
 
 (struct/lens-es
-  (elevator-attributes (state time-to-live timestamp))
-  (elevator-state      (id name position servicing-requests external-requests internal-requests done-requests resting-position opening-time))
-  (external-command    (direction floor timestamp))
-  (internal-command    (floor timestamp)))
+  (elevator-attributes  (state time-to-live timestamp))
+  (elevator-state       (id name position servicing-requests external-requests internal-requests done-requests opening-time))
+  (request              (direction floor timestamp)))
+
+(define (command-request? request) (symbol=? (request-direction request) 'command))
+(define (call-request? request) (not (symbol=? (request-direction request) 'command)))
 
 ;; Load/generate an identity
 (define-values (id name) (generate-or-load-identity))

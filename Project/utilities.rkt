@@ -58,21 +58,16 @@
 (define (insert-self-into-elevators elevators folded-elevators)
   (lens-set state-lens elevators (lens-view state-lens folded-elevators)))
 
-(define (equal-command? left right)
-  (or
-    (and (internal-command? left) (internal-command? right)
-         (= (internal-command-floor left) (internal-command-floor right)))
-    (and (external-command? left) (external-command? right)
-         (symbol=?
-           (external-command-direction left) (external-command-direction right))
-         (= (external-command-floor left) (external-command-floor right)))))
+(define (same-request? left right)
+  (and (symbol=? (request-direction left) (request-direction right))
+       (= (request-floor left) (request-floor right))))
 
 ;; Unify new and stored -commands into a list where new-commands that already exist in stored-commands are excluded
 (define (prune-requests new-commands stored-commands)
   (~>
     (foldl
       (lambda (x s)
-        (if (ormap (curry equal-command? x) stored-commands)
+        (if (ormap (curry same-request? x) stored-commands)
           s
           (cons x s)))
       empty new-commands)
@@ -86,17 +81,17 @@
   (test-suite "Test prune-requests"
     (check-equals? prune-requests
       (('() '())                                                                  '())
-      (('(#s(external-command up 0 0)) '(#s(external-command up 0 0)))            '(#s(external-command up 0 0)))
-      (('(#s(external-command up 1 0)) '(#s(external-command up 1 0)))            '(#s(external-command up 1 0)))
-      (('(#s(external-command up 1 2)) '(#s(external-command up 1 0)))            '(#s(external-command up 1 0)))
-      (('(#s(external-command up 1 0)) '(#s(external-command up 1 2)))            '(#s(external-command up 1 2)))
+      (('(#s(request up 0 0)) '(#s(request up 0 0)))            '(#s(request up 0 0)))
+      (('(#s(request up 1 0)) '(#s(request up 1 0)))            '(#s(request up 1 0)))
+      (('(#s(request up 1 2)) '(#s(request up 1 0)))            '(#s(request up 1 0)))
+      (('(#s(request up 1 0)) '(#s(request up 1 2)))            '(#s(request up 1 2)))
 
-      (('(#s(external-command down 0 0)) '(#s(external-command up 0 0)))          '(#s(external-command down 0 0) #s(external-command up 0 0)))
-      (('(#s(external-command up 0 0)) '(#s(external-command down 0 0)))          '(#s(external-command up 0 0) #s(external-command down 0 0)))
-      (('(#s(external-command down 0 1)) '(#s(external-command down 0 0)))        '(#s(external-command down 0 0)))
+      (('(#s(request down 0 0)) '(#s(request up 0 0)))          '(#s(request down 0 0) #s(request up 0 0)))
+      (('(#s(request up 0 0)) '(#s(request down 0 0)))          '(#s(request up 0 0) #s(request down 0 0)))
+      (('(#s(request down 0 1)) '(#s(request down 0 0)))        '(#s(request down 0 0)))
 
-      (((for/list ([i (range 50 150)]) (internal-command i 0)) (for/list ([i 100]) (internal-command i 0)))
-        (append (for/list ([i (range 100 150)]) (internal-command i 0)) (for/list ([i 100]) (internal-command i 0)))))))
+      (((for/list ([i (range 50 150)]) (request 'command i 0)) (for/list ([i 100]) (request 'command i 0)))
+        (append (for/list ([i (range 100 150)]) (request 'command i 0)) (for/list ([i 100]) (request 'command i 0)))))))
 (run-tests prune-requests-tests)
 
 (define (unify-requests* all-elevators accessor)
@@ -104,7 +99,7 @@
     (map (curry lens-view accessor) (hash-values all-elevators))
     flatten
     remove-duplicates
-    (sort > #:key external-command-timestamp)
+    (sort > #:key request-timestamp)
     (define unified-dones _))
   (map-hash-table all-elevators (lambda (x)
     (lens-set accessor x unified-dones))))
@@ -124,27 +119,24 @@
     (map-hash-table all-elevators (lambda (x)
       (lens-set external-of-hash x external*)))))
 
+(define (command-request? request) (symbol=? (request-direction request) 'command))
+(define (call-request? request) (not (symbol=? (request-direction request) 'command)))
 ;; Add the button presses (both external and internal) to the current elevator's state. Then put the current elevator state into the hash-map of all-elevators
 (define (fold-buttons-into-elevators buttons elevators)
-  (let* ([internal-requests   (filter internal-command? buttons)]
+  (let* ([internal-requests   (filter command-request? buttons)]
          [elevators* (lens-transform internal-requests-lens elevators (curry prune-requests internal-requests))]
-         [external-requests   (filter external-command? buttons)]
+         [external-requests   (filter call-request? buttons)]
          [elevators** (lens-transform external-requests-lens elevators* (curry prune-requests external-requests))])
     elevators**))
 
 (define (make-empty-elevator id name)
-  (elevator-attributes-refresh (elevator-state id name 0 empty empty empty empty 0 0)))
+  (elevator-attributes-refresh (elevator-state id name 0 empty empty empty empty 0)))
 
 (define (update-position hash lens)
   (let ([floor (any-new-floor-reached?)])
     (if floor
       (lens-set lens hash floor)
       hash)))
-
-; (define (remove-all-elements-from-list elements list)
-;   (if (empty? elements)
-;     list
-;     (remove-all-elements-from-list (rest elements) (remove (first elements) list))))
 
 (define (compute-available-external-requests hash)
   (define servicing-lens (lens-compose elevator-state-servicing-requests-lens elevator-attributes-state-lens))
@@ -153,7 +145,7 @@
     (~>
       (map (curry lens-view servicing-lens) elevators)
       flatten
-      (filter external-command? _)
+      (filter call-request? _)
       (remove* _ (flatten (map (curry lens-view external-lens) elevators)))
       flatten)))
 
@@ -164,12 +156,12 @@
   (let ([position  (elevator-state-position state)])
     (cond
       ([empty? request]                     'halt)
-      ([< position (command-floor request)] 'up)
-      ([> position (command-floor request)] 'down)
+      ([< position (request-floor request)] 'up)
+      ([> position (request-floor request)] 'down)
       (else                                 'halt))))
 
 (define (score-elevator-request state request)
-  (abs (- (elevator-state-position state) (external-command-floor request))))
+  (abs (- (elevator-state-position state) (request-floor request))))
 
 (define (id-score-sort id-score-1 id-score-2)
   (cond
@@ -208,11 +200,6 @@
 (define (try-self-assign-external-task hash)
   (process-available-external-requests hash (compute-available-external-requests hash)))
 
-(define (command-floor command)
-  (cond
-    [(external-command? command) (external-command-floor command)]
-    [(internal-command? command) (internal-command-floor command)]))
-
 (define (set-motor-direction-to-task! hash lens)
   ;; Calls move-to-floor depending on the top of the 'servicing-requests'
   ;; field in the current elevator.
@@ -226,7 +213,7 @@
     (when (not (empty? servicing-requests))
       (~>
         (first servicing-requests)
-        command-floor
+        request-floor
         move-to-floor)))
   hash)
 
@@ -255,22 +242,24 @@
         ; (trce direction)
         (if (symbol=? direction 'halt)
           x
-          (sort x (cond
-            ;; This is correct, but we need to exclude floors above some levels :O
-            ([symbol=? direction 'up] (curry less-than (elevator-state-position (lens-view state-lens hash))))
-            ([symbol=? direction 'down] (curry more-than (elevator-state-position (lens-view state-lens hash))))) #:key command-floor)))))
+          (sort x
+            (cond
+              ;; This is correct, but we need to exclude floors above some levels :O
+              ([symbol=? direction 'up] (curry less-than (elevator-state-position (lens-view state-lens hash))))
+              ([symbol=? direction 'down] (curry more-than (elevator-state-position (lens-view state-lens hash)))))
+            #:key request-floor)))))
     ;trce*
     ))
 
 (define (prune-servicing-requests hash servicing-lens done-lens opening-lens pos-lens internal-lens)
   (let ([servicing (first-or-empty (lens-view servicing-lens hash))])
     (if (not (empty? servicing))
-      (if (= (lens-view pos-lens hash) (command-floor servicing))
+      (if (= (lens-view pos-lens hash) (request-floor servicing))
         ;; We know that the motor has tuned into this floor, so it's safe to remove (we're not in transit)
         (~>
           (lens-transform servicing-lens hash rest)
-          (lens-transform done-lens      _ (lambda (done) (if (external-command? servicing) (cons servicing done) done)))
-          (lens-transform internal-lens  _ (lambda (internal) (if (internal-command? servicing) (remove servicing internal) internal)))
+          (lens-transform done-lens      _ (lambda (done) (if (call-request? servicing) (cons servicing done) done)))
+          (lens-transform internal-lens  _ (lambda (internal) (if (command-request? servicing) (remove servicing internal) internal)))
           (lens-set opening-lens         _ 20)
           (prune-servicing-requests servicing-lens done-lens opening-lens pos-lens internal-lens))
         hash)
