@@ -1,48 +1,24 @@
 #lang racket
 
 (provide
-  trce dbug info warn erro crit ftal
-  prune-requests-that-are-done
-  trce* dbug* info* warn* erro* crit* ftal*
+  prune-external-requests-that-are-done
   try-self-assign-external-task
   set-motor-direction-to-task!
   update-position
   prune-servicing-requests
+  remove-dead-elevators
   hashify
   hash-remove-predicate
   sort-servicing
   elevator-attributes-refresh
   unify-requests
   make-empty-elevator
-  decrement-time-to-live filter-newest-to-hash prune-old-messages update-elevator
+  decrement-time-to-live filter-newest-to-hash unify-messages-and-elevators insert-self-into-elevators
   prune-requests fold-buttons-into-elevators)
 
 (require lens racket/fasl racket/hash racket/pretty racket/syntax rackunit rackunit/text-ui sha threading
-  "data-structures.rkt" "motor.rkt"
+  "data-structures.rkt" "motor.rkt" "logger.rkt"
   (for-syntax racket/syntax))
-
-(define-syntax (generate-stream-logger syn)
-  (let* ([f (cdr (syntax->datum syn))]
-         [n (for/list ([i f]) (format-symbol "~a*" i))])
-    (datum->syntax syn
-      `(begin ,@(for/list ([i n])
-        `(define-syntax-rule (,i expr)
-          (begin
-            (let ([e expr])
-              (pretty-write (list ',i '_ '= e) (current-error-port))
-              e))))))))
-
-;; Create custom loggers that pretty-writes to standard error
-(define-syntax-rule (generate-loggers type ...)
-  (begin
-    (...
-      (define-syntax-rule (type expr ...)
-        (begin
-          (pretty-write `(,(format-symbol "~a:" 'type) expr = ,expr) (current-error-port)) ...))) ...))
-
-;; TODO: Clean this mess up into a single macro call!
-(generate-loggers trce dbug info warn erro crit ftal)
-(generate-stream-logger trce dbug info warn erro crit ftal)
 
 ;; Hash a datum by serialization and then sha256
 (define (hashify message) (sha256 (s-exp->fasl message)))
@@ -59,6 +35,7 @@
   (elevator-attributes state time-to-live (current-inexact-milliseconds)))
 
 ;; Take messages, make into hash-set of attributes with ttl reset
+;; TODO Clean up this dirty code if possible
 (define (filter-newest-to-hash messages)
   (foldl (lambda (c s)
     (let* ([state (first c)]
@@ -72,8 +49,9 @@
     messages))
 
 ;; Discard messages older than current from all-elevators
-(define (prune-old-messages elevators all-elevators)
-  (hash-union elevators all-elevators #:combine (lambda (a b) (if (> (elevator-attributes-timestamp a) (elevator-attributes-timestamp b)) a b))))
+(define (unify-messages-and-elevators messages elevators)
+  (let ([ts elevator-attributes-timestamp])
+    (hash-union messages elevators #:combine (lambda (a b) (if (> (ts a) (ts b)) a b)))))
 
 ;; Decrement all 'time-to-live's
 (define (decrement-time-to-live elevators)
@@ -81,9 +59,8 @@
     (lens-transform elevator-attributes-time-to-live-lens x sub1))))
 
 ;; Update our own current state
-(define (update-elevator elevators this-elevator)
-  (let ([current-elevator (this-elevator elevators)])
-    (hash-set elevators (elevator-state-id current-elevator) (elevator-attributes-refresh current-elevator))))
+(define (insert-self-into-elevators elevators folded-elevators)
+  (lens-set state-lens elevators (lens-view state-lens folded-elevators)))
 
 (define (equal-command? left right)
   (or
@@ -143,7 +120,7 @@
     (unify-requests* all-elevators done-of-hash)
     (unify-requests* external-of-hash)))
 
-(define (prune-requests-that-are-done all-elevators)
+(define (prune-external-requests-that-are-done all-elevators)
   (let* ([state        (first (hash-values all-elevators))]
          [done         (lens-view done-of-hash state)]
          [external     (lens-view external-of-hash state)]
@@ -152,14 +129,12 @@
       (lens-set external-of-hash x external*)))))
 
 ;; Add the button presses (both external and internal) to the current elevator's state. Then put the current elevator state into the hash-map of all-elevators
-(define (fold-buttons-into-elevators buttons this-elevator elevators)
-  (let* ([button-presses      buttons]
-         [internal-requests   (filter internal-command? button-presses)]
-         [this-elevator*      (lens-transform elevator-state-internal-requests-lens (this-elevator elevators) (curry prune-requests internal-requests))]
-         [external-requests   (filter external-command? button-presses)]
-         [this-elevator**     (lens-transform elevator-state-external-requests-lens this-elevator* (curry prune-requests external-requests))]
-         [all-elevators*      (hash-set elevators (elevator-state-id this-elevator**) (elevator-attributes this-elevator** time-to-live (current-inexact-milliseconds)))])
-    all-elevators*))
+(define (fold-buttons-into-elevators buttons elevators)
+  (let* ([internal-requests   (filter internal-command? buttons)]
+         [elevators* (lens-transform internal-requests-lens elevators (curry prune-requests internal-requests))]
+         [external-requests   (filter external-command? buttons)]
+         [elevators** (lens-transform external-requests-lens elevators* (curry prune-requests external-requests))])
+    elevators**))
 
 (define (make-empty-elevator id name)
   (elevator-attributes-refresh (elevator-state id name 0 empty empty empty empty 0 0)))
@@ -277,18 +252,19 @@
     (else (> floor-1 floor-2))))
 
 (define (sort-servicing hash servicing-lens state-lens)
-  (dbug hash)
+  ; (dbug hash)
   (~>
     (let ([direction (compute-direction-of-travel (lens-view state-lens hash))])
       (lens-transform servicing-lens hash (lambda (x)
-        (trce direction)
+        ; (trce direction)
         (if (symbol=? direction 'halt)
           x
           (sort x (cond
             ;; This is correct, but we need to exclude floors above some levels :O
             ([symbol=? direction 'up] (curry less-than (elevator-state-position (lens-view state-lens hash))))
             ([symbol=? direction 'down] (curry more-than (elevator-state-position (lens-view state-lens hash))))) #:key command-floor)))))
-    trce*))
+    ;trce*
+    ))
 
 (define (prune-servicing-requests hash servicing-lens done-lens opening-lens pos-lens internal-lens)
   (let ([servicing (first-or-empty (lens-view servicing-lens hash))])
@@ -303,3 +279,6 @@
           (prune-servicing-requests servicing-lens done-lens opening-lens pos-lens internal-lens))
         hash)
       hash)))
+
+(define (remove-dead-elevators elevators)
+  (hash-remove-predicate elevators (lambda (x) (<= (elevator-attributes-time-to-live x) 0))))

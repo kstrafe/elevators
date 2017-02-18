@@ -2,24 +2,25 @@
 
 ;; This module provides the following functions
 (provide
-  elevator-hardware-init
-  elevator-hardware-set-motor-direction
-  elevator-hardware-set-button-lamp
-  elevator-hardware-set-floor-indicator
-  elevator-hardware-set-door-open-lamp
-  elevator-hardware-set-stop-lamp
-  elevator-hardware-get-button-signal
-  elevator-hardware-get-floor-sensor-signal
-  elevator-hardware-get-stop-signal
-  elevator-hardware-get-obstruction-signal
-
-  elevator-hardware-motor-direction
+  elevator-hardware-button-list
   elevator-hardware-button-type
 
-  elevator-hardware-button-list
+  elevator-hardware-close-door
+
+  elevator-hardware-get-button-signal
+  elevator-hardware-get-floor-sensor-signal
+  elevator-hardware-get-obstruction-signal
+  elevator-hardware-get-stop-signal
+
+  elevator-hardware-motor-direction
 
   elevator-hardware-open-door
-  elevator-hardware-close-door)
+
+  elevator-hardware-set-button-lamp
+  elevator-hardware-set-floor-indicator
+  elevator-hardware-set-motor-direction
+  elevator-hardware-set-stop-lamp)
+
 
 (require ffi/unsafe ; We require ffi (foreign function interface) to call C libraries
          racket/runtime-path

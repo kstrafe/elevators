@@ -2,7 +2,9 @@
 
 (provide pop-button-states set-lights-using-commands)
 
-(require lens racket/async-channel "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "utilities.rkt")
+(require lens racket/async-channel "data-structures.rkt"
+  "elevator-hardware/elevator-interface.rkt" "logger.rkt"
+  "utilities.rkt")
 
 ;; Get all button presses. Remove duplicates. Add timestamps.
 (define (pop-button-states)
