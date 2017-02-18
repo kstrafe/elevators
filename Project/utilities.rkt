@@ -206,11 +206,9 @@
     (let ([direction (get-direction position servicing-requests opening)])
       (trce direction)
       (if (= direction 0)
-        (begin
-          (trce internal-requests)
-          ;; Returns the oldest internal request
-          ;; TODO Put this request into servicing of the current hash and return it for further use
-          (foldl (lambda (c s) (if (> (internal-command-timestamp c) (internal-command-timestamp s)) c s)) (first internal-requests) (rest internal-requests)))
+        ;; TODO Put this request into servicing of the current hash and return it for further use
+        (let ([oldest-internal-request (foldl (lambda (c s) (if (> (internal-command-timestamp c) (internal-command-timestamp s)) c s)) (first internal-requests) (rest internal-requests))])
+          (trce internal-requests))
         #f)
       hash)))
 
