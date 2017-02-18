@@ -205,9 +205,10 @@
     (~>
       ;; Move internal request to servicing request based on direction of travel
       (if (and (not (empty? internal-requests)) (= (get-direction position servicing-requests) 0))
-        (let ([oldest-internal-request (foldl (lambda (c s) (if (> (internal-command-timestamp c) (internal-command-timestamp s)) c s)) (first internal-requests) (rest internal-requests))])
-          (lens-set servicing-lens hash (cons oldest-internal-request servicing-requests)))
+        (let ([oldest-internal-request (foldl (lambda (c s) (if (< (internal-command-timestamp c) (internal-command-timestamp s)) c s)) (first internal-requests) (rest internal-requests))])
+          (lens-set servicing-lens hash (remove-duplicates (cons oldest-internal-request servicing-requests))))
         hash)
+      trce*
     )))
 
 (define (command-floor command)
