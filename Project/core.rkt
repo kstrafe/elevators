@@ -65,6 +65,7 @@
               prune-requests-that-are-done
               ;; Calculate the tasks to work on, to be put into 'servicing requests'
               try-self-assign-external-task
+              (sort-servicing servicing-lens state-lens)
               ;; Use the 'servicing requests' field to set the motor direction
               (set-motor-direction-to-task! servicing-lens)
               ;; Check the current elevator position against the 'servicing requests'

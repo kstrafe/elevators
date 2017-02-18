@@ -10,6 +10,7 @@
   prune-servicing-requests
   hashify
   hash-remove-predicate
+  sort-servicing
   elevator-attributes-refresh
   unify-requests
   make-empty-elevator
@@ -206,6 +207,9 @@
     ([string<? (first id-score-1) (first id-score-2)] #t)
     ([string>=? (first id-score-1) (first id-score-2)] #f)))
 
+(define (reverse-cons lst item)
+  (append lst (list item)))
+
 (define (process-available-external-requests hash requests)
   (define state-lens elevator-attributes-state-lens)
   (let ([top-request (first-or-empty requests)])
@@ -226,7 +230,7 @@
           (process-available-external-requests
             (if (empty? best-id)
               hash
-              (lens-transform (lens-compose elevator-state-servicing-requests-lens elevator-attributes-state-lens (hash-ref-lens best-id)) hash (lambda (x) (cons top-request x))))
+              (lens-transform (lens-compose elevator-state-servicing-requests-lens elevator-attributes-state-lens (hash-ref-lens best-id)) hash (lambda (x) (reverse-cons x top-request))))
             (rest requests))
           )))))
 
@@ -260,6 +264,32 @@
     empty
     (first list)))
 
+(define (less-than cutoff floor-1 floor-2)
+  (cond
+    ([<= floor-2 cutoff] #t)
+    ([<= floor-1 cutoff] #f)
+    (else (< floor-1 floor-2))))
+
+(define (more-than cutoff floor-1 floor-2)
+  (cond
+    ([>= floor-2 cutoff] #t)
+    ([>= floor-1 cutoff] #f)
+    (else (> floor-1 floor-2))))
+
+(define (sort-servicing hash servicing-lens state-lens)
+  (dbug hash)
+  (~>
+    (let ([direction (compute-direction-of-travel (lens-view state-lens hash))])
+      (lens-transform servicing-lens hash (lambda (x)
+        (trce direction)
+        (if (symbol=? direction 'halt)
+          x
+          (sort x (cond
+            ;; This is correct, but we need to exclude floors above some levels :O
+            ([symbol=? direction 'up] (curry less-than (elevator-state-position (lens-view state-lens hash))))
+            ([symbol=? direction 'down] (curry more-than (elevator-state-position (lens-view state-lens hash))))) #:key command-floor)))))
+    trce*))
+
 (define (prune-servicing-requests hash servicing-lens done-lens opening-lens pos-lens internal-lens)
   (let ([servicing (first-or-empty (lens-view servicing-lens hash))])
     (if (not (empty? servicing))
@@ -269,7 +299,7 @@
           (lens-transform servicing-lens hash rest)
           (lens-transform done-lens      _ (lambda (done) (if (external-command? servicing) (cons servicing done) done)))
           (lens-transform internal-lens  _ (lambda (internal) (if (internal-command? servicing) (remove servicing internal) internal)))
-          (lens-set opening-lens         _ 10)
+          (lens-set opening-lens         _ 20)
           (prune-servicing-requests servicing-lens done-lens opening-lens pos-lens internal-lens))
         hash)
       hash)))
