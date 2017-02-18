@@ -4,7 +4,9 @@
 
 (require lens "identity-generator.rkt" "logger.rkt")
 
-(define floor-count           4)
+(define max-done-length       30)
+(define floor-count           9)
+(define door-open-iterations  20)
 (define iteration-sleep-time  0.1)
 (define time-to-live          (ceiling (/ 6 iteration-sleep-time)))
 

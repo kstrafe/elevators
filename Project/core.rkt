@@ -13,10 +13,10 @@
 ;; and performs side effects with it, returning a new
 ;; hash-table of elevators.
 (define (core elevators)
-  ; (trce elevators)
   (if (or (empty? elevators) (not (hash-has-key? elevators id)))
     (core (hash id (make-empty-elevator id name)))
     (begin
+      (trce (lens-view this:servicing elevators))
       (broadcast (lens-view this:state elevators))
       (sleep iteration-sleep-time)
       (set-floor-indicator-using-elevator (lens-view this:state elevators))
@@ -39,7 +39,8 @@
             update-position
             unify-requests
             prune-call-requests-that-are-done
-            try-self-assign-external-task
+            assign-call-requests
             sort-servicing
             set-motor-direction-to-task!
+            prune-done-requests
             prune-servicing-requests))))))
