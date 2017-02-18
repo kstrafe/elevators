@@ -5,7 +5,7 @@
 ; raco pkg install lens threading sha reloadable libuuid
 (require lens threading
   "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt"
-  "logger.rkt" "motor.rkt" "network/network.rkt" "poll-buttons.rkt" "utilities.rkt")
+  "logger.rkt" "motor.rkt" "network.rkt" "poll-buttons.rkt" "utilities.rkt")
 
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)
@@ -17,7 +17,7 @@
   (if (or (empty? elevators) (not (hash-has-key? elevators id)))
     (core (hash id (make-empty-elevator id name)))
     (begin
-      (send (lens-view state-lens elevators))
+      (broadcast (lens-view state-lens elevators))
       (sleep iteration-sleep-time)
       ; (trce elevators)
       ;; Count down to zero if door open time is non-zero

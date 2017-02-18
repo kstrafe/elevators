@@ -7,7 +7,6 @@
   update-position
   prune-servicing-requests
   remove-dead-elevators
-  hashify
   hash-remove-predicate
   sort-servicing
   elevator-attributes-refresh
@@ -16,12 +15,9 @@
   decrement-time-to-live filter-newest-to-hash unify-messages-and-elevators insert-self-into-elevators
   prune-requests fold-buttons-into-elevators)
 
-(require lens racket/fasl racket/hash racket/pretty racket/syntax rackunit rackunit/text-ui sha threading
+(require lens racket/fasl racket/hash racket/pretty racket/syntax rackunit rackunit/text-ui threading
   "data-structures.rkt" "motor.rkt" "logger.rkt"
   (for-syntax racket/syntax))
-
-;; Hash a datum by serialization and then sha256
-(define (hashify message) (sha256 (s-exp->fasl message)))
 
 ;; Maps each value in a hash-table
 (define (map-hash-table hash function)
