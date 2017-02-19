@@ -219,7 +219,6 @@
         ; (lens-set servicing-lens _ (sort (append (eligible-internal-requests position direction internal-requests opening) servicing-requests) <))
         ;; TODO Fix this a lot; fix let direction*; cleanup predicate on sort; still a duplicate in servicing-requests, remove it
         (lens-set servicing-lens _
-          (sort
             (append (filter (lambda (x)
                               (let ([direction* (get-direction position servicing-requests)])
                                 (cond
@@ -227,12 +226,7 @@
                                   [(and (positive? direction*) (> (internal-command-floor x) position))]
                                   [(and (negative? direction*) (< (internal-command-floor x) position))])))
                       internal-requests)
-              (remove-duplicates servicing-requests))
-            (lambda (a b)
-              (if (positive? (get-direction position servicing-requests))
-                (if (< (internal-command-floor a) (internal-command-floor b)) a b)
-                (if (>= (internal-command-floor a) (internal-command-floor b)) a b)))))
-        ))))
+              (remove-duplicates servicing-requests)))))))
 
 (define (command-floor command)
   (cond
