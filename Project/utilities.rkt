@@ -9,6 +9,15 @@
 ;; Common tools
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Read commands from file
+(define (read-commands)
+  (with-handlers ([exn? (lambda (e) (displayln e) empty)])
+    (let ([filepath "commands"])
+      (if (file-exists? filepath)
+        (with-input-from-file filepath
+          (lambda () (file->value filepath)))
+        empty))))
+
 ;; Get the first of a list or return empty
 (define (first-or-empty list) (if (empty? list) empty (first list)))
 
@@ -61,7 +70,7 @@
 
 ;; Create a new empty elevator
 (define (make-empty-elevator id name)
-  (attributes (state id name 0 empty empty empty empty 0) time-to-live (current-inexact-milliseconds)))
+  (attributes (state id name 0 empty empty (read-commands) empty 0) time-to-live (current-inexact-milliseconds)))
 
 ;; Calculate which call requests are available to pick
 ;;
@@ -236,6 +245,12 @@
 ;; Assign call requests to elevators
 (define (assign-call-requests hash)
   (process-available-call-requests hash (compute-available-call-requests hash)))
+
+;; Store commands locally, to be restored in case of power loss
+(define (store-commands elevators)
+  (with-handlers ([exn? (lambda (e) (displayln e))])
+    (with-output-to-file "commands" (lambda () (write (lens-view this:command elevators))) #:exists 'replace))
+  elevators)
 
 ;; Compute which commands are going to be serviced
 (define (service-commands elevators)
