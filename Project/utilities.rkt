@@ -74,8 +74,10 @@
     (~>
       (map (curry lens-view other:servicing) elevators)
       flatten
-      (remove* _ (flatten (map (curry lens-view other:call) elevators)))
+      ; (remove* _ (flatten (map (curry lens-view other:call) elevators)))
+      (remove* _ (flatten (lens-view other:call (first elevators))))
       (filter call-request? _)
+      ; remove-duplicates
       flatten)))
 
 ;; Compute a state's current direction of travel based on its
