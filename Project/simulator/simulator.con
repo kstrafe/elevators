@@ -4,7 +4,7 @@ simulator.con
 --travelTimePassingFloor_ms     500
 --btnDepressedTime_ms           200
 
---numFloors             4           // Minimum: 2, maximum: 9
+--numFloors             9           // Minimum: 2, maximum: 9
 
 --com_ip                localhost
 --com_port              15657

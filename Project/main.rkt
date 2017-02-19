@@ -1,6 +1,9 @@
 #! /usr/bin/env racket
 #lang racket
 
+;; This project requires the following packages
+;;;; raco pkg install lens libuuid reloadable sha threading
+
 ;; This module sets up a reloadable entry point.
 ;; The reloadable entry point and all its children will
 ;; automatically be reloaded when their files are updated.

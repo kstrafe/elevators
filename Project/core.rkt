@@ -2,73 +2,69 @@
 
 (provide core)
 
-;raco pkg install lens threading sha reloadable libuuid
 (require lens threading
   "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt"
-  "motor.rkt" "network/network.rkt" "poll-buttons.rkt" "utilities.rkt")
+  "logger.rkt" "motor.rkt" "network.rkt" "poll-buttons.rkt" "utilities.rkt")
 
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)
 
-;; Load/generate an identity
-(define-values (id name) (generate-or-load-identity))
-(info id name)
+(struct/lens complex (floors calls commands elevators) #:prefab)
 
-;; Retrieve the current elevator state from the hash-table
-(define (this-elevator hash) (elevator-attributes-state (hash-ref hash id)))
-;; TODO Replace all instances of 'this-elevator' with state-lens, using lenses is cleaner
-;; and we can easily modify the state in-place without manually reconstructing elevator-attributes
-(define state-lens (lens-compose elevator-attributes-state-lens (hash-ref-lens id)))
-(define opening-lens (lens-compose elevator-state-opening-time-lens elevator-attributes-state-lens (hash-ref-lens id)))
-(define internal-requests-lens (lens-compose elevator-state-internal-requests-lens state-lens))
-(define external-requests-lens (lens-compose elevator-state-external-requests-lens state-lens))
-(define position-lens (lens-compose elevator-state-position-lens state-lens))
-(define servicing-lens (lens-compose elevator-state-servicing-requests-lens state-lens))
+(define (if-changed-call complex accessor procedure)
+  (let ([elems (accessor complex)])
+    (when (not (equal? (first elems) (second elems)))
+      (procedure (first elems))))
+  complex)
 
-;; The core algorithm consumes a hash-table of elevators
+(define (core complex-struct)
+  ; (trce complex-struct)
+  (if (not (complex? complex-struct))
+    (complex (list 0 0) (list empty empty) (list empty empty) empty)
+    (let ([complex* (lens-transform complex-elevators-lens complex-struct discuss-good-solution-with-other-elevators-and-execute)])
+        (~>
+        (lens-transform complex-floors-lens complex*
+          (lambda (floors) (list (lens-view (lens-compose this:position  complex-elevators-lens) complex*) (first floors))))
+        (lens-transform complex-calls-lens _
+          (lambda (buttons) (list (lens-view (lens-compose this:call     complex-elevators-lens) complex*) (first buttons))))
+        (lens-transform complex-commands-lens _
+          (lambda (buttons) (list (lens-view (lens-compose this:command  complex-elevators-lens) complex*) (first buttons))))
+        (if-changed-call complex-floors set-floor-indicator)
+        (if-changed-call complex-calls set-call-lights)
+        (if-changed-call complex-commands set-command-lights)))))
+
+;; This algorithm consumes a hash-table of elevators
 ;; and performs side effects with it, returning a new
 ;; hash-table of elevators.
-(define (core elevators)
-  ; (trce elevators)
+(define (discuss-good-solution-with-other-elevators-and-execute elevators)
   (if (or (empty? elevators) (not (hash-has-key? elevators id)))
-    (core (hash id (make-empty-elevator id name)))
+    (discuss-good-solution-with-other-elevators-and-execute (hash id (make-empty-elevator id name)))
     (begin
-      (send (lens-view state-lens elevators))
+      ; (trce (lens-view this:servicing elevators))
+      (broadcast (lens-view this:state elevators))
       (sleep iteration-sleep-time)
-      ;; Count down to zero if door open time is non-zero
-      ;; We could also sleep manually for a given time and then reset to #f or something
-      ;; TODO What do you think?
-      (if (> (lens-view opening-lens elevators) 0)
-        (begin
-          (elevator-hardware-open-door)
-          (lens-transform opening-lens elevators sub1))
-        (let ([elevators* (fold-buttons-into-elevators (pop-button-states) this-elevator elevators)])
-          (set-lights-using-commands (lens-view state-lens elevators*))
-          (elevator-hardware-close-door)
-          ; (trce (this-elevator elevators))
-          (let ([messages (receive)])
+      (let ([current-open (lens-view this:opening elevators)])
+        (if (positive? current-open)
+          (begin
+            (cond
+              ([= current-open door-open-iterations] (elevator-hardware:open-door))
+              ([= current-open 1] (elevator-hardware:close-door)))
+            (lens-transform this:opening elevators sub1))
+          (let ([elevators* (fold-buttons-into-elevators (pop-button-states) elevators)])
             (~>
-              ;; Take messages, make into hash-set of attributes with ttl reset
-              (filter-newest-to-hash messages)
-              ;; Decrement all 'time-to-live's and discard messages older than we already have
-              (prune-old-messages (decrement-time-to-live elevators*))
-              ;; Update our own current state
-              (update-elevator this-elevator)
-              ;; Remove all elevators where time-to-live <= 0
-              (hash-remove-predicate (lambda (x) (<= (elevator-attributes-time-to-live x) 0)))
-              ;; Check if any new floors are reached and use it to change position in the current elevator
-              (update-position position-lens)
-              ;; Unify external requests and done-requests from all elevators
+              (receive)
+              filter-newest-to-hash
+              (unify-messages-and-elevators elevators*)
+              (insert-self-into-elevators elevators*)
+              remove-dead-elevators
+              decrement-time-to-live
+              ; trce* ; You can add a trce* anywhere inside a ~> to print the state
+              update-position
               unify-requests
-              ;; Remove requests from external-requests that are in done-requests
-              prune-requests-that-are-done
-              ;; Check the current elevator position against the 'servicing requests'
-              ;; If it's equal, remove it and set the opening-time value
-              (remove-tasks-that-motor-completed this-elevator id)
-              ;; TODO External requests
-              ;; Compute servicing of internal requests
-              (compute-servicing-of-internal-requests position-lens servicing-lens internal-requests-lens opening-lens)
-              ;; Calculate the tasks to work on, to be put into 'servicing requests'
-              (compute-the-task-to-take _ this-elevator id)
-              ;; Use the 'servicing requests' field to set the motor direction
-              (set-motor-direction-to-task! servicing-lens))))))))
+              prune-call-requests-that-are-done
+              assign-call-requests
+              compute-servicing-of-internal-requests
+              sort-servicing
+              set-motor-direction-to-task!
+              prune-done-requests
+              prune-servicing-requests)))))))
