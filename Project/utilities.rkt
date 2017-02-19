@@ -251,7 +251,6 @@
         (let ([oldest-command (foldl (lambda (c s) (if (< (request-timestamp c) (request-timestamp s)) c s)) (first commands) (rest commands))])
           (lens-set this:servicing elevators (remove-duplicates (cons oldest-command servicing))))
         elevators)
-      trce*
       ;; Add all eligible commands to servicing
       (lens-set this:servicing _
         (~>
