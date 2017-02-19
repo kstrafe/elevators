@@ -254,18 +254,16 @@
       trce*
       ;; Add all eligible commands to servicing
       (lens-set this:servicing _
-        (remove-duplicates
-          (append
-            (filter
-              (lambda (x)
-                (let ([direction* (compute-direction-of-travel state)])
-                  (dbug direction direction*)
-                  (cond
-                    [(symbol=? direction* 'halt) #t]
-                    [(and (symbol=? direction* 'up) (> (request-floor x) position))]
-                    [(and (symbol=? direction* 'down) (< (request-floor x) position))])))
-              commands)
-            servicing))))))
+        (~>
+          (filter
+            (lambda (x)
+              (or
+                (symbol=? direction 'halt)
+                (and (symbol=? direction 'up) (> (request-floor x) position))
+                (and (symbol=? direction 'down) (< (request-floor x) position))))
+            commands)
+          (append servicing)
+          remove-duplicates)))))
 
 ;; Sort the currently servicing requests
 ;;
