@@ -11,29 +11,17 @@
 
 (struct/lens complex (floors calls commands elevators) #:prefab)
 
-(define (if-floor-change-set-indicator complex)
-  (let ([floors (complex-floors complex)])
-    (when (not (= (first floors) (second floors)))
-      (set-floor-indicator (first floors))))
-  complex)
-
-(define (if-calls-change-set-indicator complex)
-  (let ([buttons (complex-calls complex)])
-    (when (not (equal? (first buttons) (second buttons)))
-      (set-call-lights (first buttons))))
-  complex)
-
-(define (if-commands-change-set-indicator complex)
-  (let ([buttons (complex-commands complex)])
-    (when (not (equal? (first buttons) (second buttons)))
-      (set-command-lights (first buttons))))
+(define (if-changed-call complex accessor procedure)
+  (let ([elems (accessor complex)])
+    (when (not (equal? (first elems) (second elems)))
+      (procedure (first elems))))
   complex)
 
 (define (core complex-struct)
-  (trce complex-struct)
+  ; (trce complex-struct)
   (if (not (complex? complex-struct))
     (complex (list 0 0) (list empty empty) (list empty empty) empty)
-    (let ([complex* (lens-transform complex-elevators-lens complex-struct discuss-good-solution-with-other-elevators)])
+    (let ([complex* (lens-transform complex-elevators-lens complex-struct discuss-good-solution-with-other-elevators-and-execute)])
         (~>
         (lens-transform complex-floors-lens complex*
           (lambda (floors) (list (lens-view (lens-compose this:position  complex-elevators-lens) complex*) (first floors))))
@@ -41,16 +29,16 @@
           (lambda (buttons) (list (lens-view (lens-compose this:call     complex-elevators-lens) complex*) (first buttons))))
         (lens-transform complex-commands-lens _
           (lambda (buttons) (list (lens-view (lens-compose this:command  complex-elevators-lens) complex*) (first buttons))))
-        if-floor-change-set-indicator
-        if-commands-change-set-indicator
-        if-calls-change-set-indicator))))
+        (if-changed-call complex-floors set-floor-indicator)
+        (if-changed-call complex-calls set-call-lights)
+        (if-changed-call complex-commands set-command-lights)))))
 
-;; The core algorithm consumes a hash-table of elevators
+;; This algorithm consumes a hash-table of elevators
 ;; and performs side effects with it, returning a new
 ;; hash-table of elevators.
-(define (discuss-good-solution-with-other-elevators elevators)
+(define (discuss-good-solution-with-other-elevators-and-execute elevators)
   (if (or (empty? elevators) (not (hash-has-key? elevators id)))
-    (discuss-good-solution-with-other-elevators (hash id (make-empty-elevator id name)))
+    (discuss-good-solution-with-other-elevators-and-execute (hash id (make-empty-elevator id name)))
     (begin
       ; (trce (lens-view this:servicing elevators))
       (broadcast (lens-view this:state elevators))
