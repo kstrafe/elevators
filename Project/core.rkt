@@ -41,7 +41,6 @@
     (discuss-good-solution-with-other-elevators-and-execute (hash id (make-empty-elevator id name)))
     (begin
       ; (trce (lens-view this:servicing elevators))
-      (trce (lens-view this:command elevators))
       (broadcast (lens-view this:state elevators))
       (sleep iteration-sleep-time)
       (let ([current-open (lens-view this:opening elevators)])
