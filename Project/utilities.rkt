@@ -282,6 +282,7 @@
 ;; make the elevator turn around.
 (define (sort-servicing hash)
   (let ([direction (compute-direction-of-travel (lens-view this:state hash))])
+    (dbug direction)
     (lens-transform this:servicing hash
       (lambda (x)
         (if (symbol=? direction 'halt)
