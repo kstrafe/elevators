@@ -12,11 +12,7 @@
 ;; Read commands from file
 (define (read-commands)
   (with-handlers ([exn? (lambda (e) (displayln e) empty)])
-    (let ([filepath "commands"])
-      (if (file-exists? filepath)
-        (with-input-from-file filepath
-          (lambda () (file->value filepath)))
-        empty))))
+    (let ([filepath "commands"]) (if (file-exists? filepath) (file->value filepath) empty))))
 
 ;; Get the first of a list or return empty
 (define (first-or-empty list) (if (empty? list) empty (first list)))
