@@ -237,33 +237,35 @@
 (define (assign-call-requests hash)
   (process-available-call-requests hash (compute-available-call-requests hash)))
 
-;; Compute which internal requests are going to be serviced
-(define (compute-servicing-of-internal-requests hash)
-  (let* ([state (lens-view this:state hash)]
-         [position (lens-view this:position hash)]
-         [servicing-requests (lens-view this:servicing hash)]
-         [internal-requests (lens-view this:command hash)]
-         [opening (lens-view this:opening hash)])
-    (trce servicing-requests internal-requests)
-    (let ([direction (compute-direction-of-travel state)])
-      (~>
-        ;; Move internal request to servicing request based on direction of travel
-        (if (and (not (empty? internal-requests)) (symbol=? direction 'halt))
-          (let ([oldest-internal-request (foldl (lambda (c s) (if (< (request-timestamp c) (request-timestamp s)) c s)) (first internal-requests) (rest internal-requests))])
-            (lens-set this:servicing hash (remove-duplicates (cons oldest-internal-request servicing-requests))))
-          hash)
-        trce*
-        ; (lens-set servicing-lens _ (sort (append (eligible-internal-requests position direction internal-requests opening) servicing-requests) <))
-        ;; TODO Fix this a lot; fix let direction*; cleanup predicate on sort; still a duplicate in servicing-requests, remove it
-        (lens-set this:servicing _
-            (append (filter (lambda (x)
-                              (let ([direction* (compute-direction-of-travel state)])
-                                (cond
-                                  [(symbol=? direction* 'halt) #t]
-                                  [(and (symbol=? direction* 'up) (> (request-floor x) position))]
-                                  [(and (symbol=? direction* 'down) (< (request-floor x) position))])))
-                      internal-requests)
-              (remove-duplicates servicing-requests)))))))
+;; Compute which commands are going to be serviced
+(define (service-commands elevators)
+  (let* ([state (lens-view this:state elevators)]
+         [position (lens-view this:position elevators)]
+         [servicing (lens-view this:servicing elevators)]
+         [commands (lens-view this:command elevators)]
+         [opening (lens-view this:opening elevators)]
+         [direction (compute-direction-of-travel state)])
+    (~>
+      ;; Move internal request to servicing request if standing still
+      (if (and (not (empty? commands)) (symbol=? direction 'halt))
+        (let ([oldest-command (foldl (lambda (c s) (if (< (request-timestamp c) (request-timestamp s)) c s)) (first commands) (rest commands))])
+          (lens-set this:servicing elevators (remove-duplicates (cons oldest-command servicing))))
+        elevators)
+      trce*
+      ;; Add all eligible commands to servicing
+      (lens-set this:servicing _
+        (remove-duplicates
+          (append
+            (filter
+              (lambda (x)
+                (let ([direction* (compute-direction-of-travel state)])
+                  (dbug direction direction*)
+                  (cond
+                    [(symbol=? direction* 'halt) #t]
+                    [(and (symbol=? direction* 'up) (> (request-floor x) position))]
+                    [(and (symbol=? direction* 'down) (< (request-floor x) position))])))
+              commands)
+            servicing))))))
 
 ;; Sort the currently servicing requests
 ;;

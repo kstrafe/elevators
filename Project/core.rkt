@@ -63,7 +63,7 @@
               unify-requests
               prune-call-requests-that-are-done
               assign-call-requests
-              compute-servicing-of-internal-requests
+              service-commands
               sort-servicing
               set-motor-direction-to-task!
               prune-done-requests
