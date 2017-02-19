@@ -130,10 +130,17 @@
               (map (lambda (x) (append x (list (compute-direction-to-travel (first x) (list top-request))))) _)
               (map (lambda (x) (append x (list (request-direction top-request)))) _)
               (map (lambda (x) (append x (list (elevator-request-direction (first x))))) _)
+              (map (lambda (x) (append x (list (state-position (first x))))) _)
+              (map (lambda (x) (append x (list (request-floor top-request)))) _)
+              ;; If we have request higher than current, and we're NOT in halt, then we MUST drop it
               (filter
                 (lambda (x)
                   (or
                     (and
+                      (match (second x)
+                        ('up (< (sixth x) (seventh x)))
+                        ('down (> (sixth x) (seventh x)))
+                        (_ #t))
                                                       ; dot = direction of travel
                       (symbol=? (second x) (third x)) ; = current-dot dot-top-request
                       (symbol=? (second x) (fourth x)) ; = current-dot direction-top-request
