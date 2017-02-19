@@ -171,7 +171,7 @@
     (let* ([id         (state-id (first msg))]
            [timestamp  (last msg)])
       (if (or (not (hash-has-key? accum id)) (> timestamp (attributes-timestamp (hash-ref accum id))))
-        (hash-set accum id (attributes state time-to-live timestamp))
+        (hash-set accum id (attributes (first msg) time-to-live timestamp))
         accum)))
     (make-immutable-hash)
     messages))

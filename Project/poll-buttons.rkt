@@ -1,6 +1,6 @@
 #lang racket
 
-(provide pop-button-states set-floor-indicator-using-elevator set-lights-using-commands)
+(provide pop-button-states set-call-lights set-command-lights set-floor-indicator)
 
 (require lens racket/async-channel "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "logger.rkt")
 
@@ -14,20 +14,20 @@
             (cons (buttonify button) (loop))
             empty))))))
 
-;; Sets the floor indicator based on this elevator's position
-(define (set-floor-indicator-using-elevator elevator)
-  (elevator-hardware:set-floor-indicator (state-position elevator)))
+(define (set-floor-indicator floor)
+  (elevator-hardware:set-floor-indicator floor))
 
-;; Set the current elevator's lights using the button states
-(define (set-lights-using-commands elevator)
-  (let* ([ext-cmds       (state-call-requests elevator)]
-         [ext-cmds-up    (map request-floor (filter (lambda (x) (symbol=? (request-direction x) 'up)) ext-cmds))]
-         [ext-cmds-down  (map request-floor (filter (lambda (x) (symbol=? (request-direction x) 'down)) ext-cmds))]
-         [int-cmds       (map request-floor (state-command-requests elevator))])
+(define (set-call-lights calls)
+  (let* ([calls-up    (map request-floor (filter (lambda (x) (symbol=? (request-direction x) 'up)) calls))]
+         [calls-down  (map request-floor (filter (lambda (x) (symbol=? (request-direction x) 'down)) calls))])
     (for ([floor (range floor-count)])
-      (elevator-hardware:set-button-lamp 'BUTTON_COMMAND   floor (if (ormap (curry = floor) int-cmds) 1 0))
-      (elevator-hardware:set-button-lamp 'BUTTON_CALL_UP   floor (if (ormap (curry = floor) ext-cmds-up) 1 0))
-      (elevator-hardware:set-button-lamp 'BUTTON_CALL_DOWN floor (if (ormap (curry = floor) ext-cmds-down) 1 0)))))
+      (elevator-hardware:set-button-lamp 'BUTTON_CALL_DOWN floor (if (ormap (curry = floor) calls-down) 1 0))
+      (elevator-hardware:set-button-lamp 'BUTTON_CALL_UP   floor (if (ormap (curry = floor) calls-up) 1 0)))))
+
+(define (set-command-lights commands)
+  (let* ([commands* (map request-floor commands)])
+    (for ([floor (range floor-count)])
+      (elevator-hardware:set-button-lamp 'BUTTON_COMMAND   floor (if (ormap (curry = floor) commands*) 1 0)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

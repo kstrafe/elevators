@@ -27,7 +27,7 @@
 
 (define this:state     (lens-compose attributes-state-lens (hash-ref-lens id)))
 (define this:opening   (lens-compose state-opening-time-lens attributes-state-lens (hash-ref-lens id)))
-(define this:command   (lens-compose state-call-requests-lens this:state))
+(define this:command   (lens-compose state-command-requests-lens this:state))
 (define this:call      (lens-compose state-call-requests-lens this:state))
 (define this:position  (lens-compose state-position-lens this:state))
 (define this:done      (lens-compose state-done-requests-lens this:state))
