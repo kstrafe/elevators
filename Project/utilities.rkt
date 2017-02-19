@@ -237,6 +237,33 @@
 (define (assign-call-requests hash)
   (process-available-call-requests hash (compute-available-call-requests hash)))
 
+;; Compute which commands are going to be serviced
+(define (service-commands elevators)
+  (let* ([state (lens-view this:state elevators)]
+         [position (lens-view this:position elevators)]
+         [servicing (lens-view this:servicing elevators)]
+         [commands (lens-view this:command elevators)]
+         [opening (lens-view this:opening elevators)]
+         [direction (compute-direction-of-travel state)])
+    (~>
+      ;; Move internal request to servicing request if standing still
+      (if (and (not (empty? commands)) (symbol=? direction 'halt))
+        (let ([oldest-command (foldl (lambda (c s) (if (< (request-timestamp c) (request-timestamp s)) c s)) (first commands) (rest commands))])
+          (lens-set this:servicing elevators (remove-duplicates (cons oldest-command servicing))))
+        elevators)
+      ;; Add all eligible commands to servicing
+      (lens-set this:servicing _
+        (~>
+          (filter
+            (lambda (x)
+              (or
+                (symbol=? direction 'halt)
+                (and (symbol=? direction 'up) (> (request-floor x) position))
+                (and (symbol=? direction 'down) (< (request-floor x) position))))
+            commands)
+          (append servicing)
+          remove-duplicates)))))
+
 ;; Sort the currently servicing requests
 ;;
 ;; It is assumed that assign-call-requests assigns
