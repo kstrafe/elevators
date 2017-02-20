@@ -256,24 +256,43 @@
          [commands (lens-view this:command elevators)]
          [opening (lens-view this:opening elevators)]
          [direction (compute-direction-of-travel state)])
-    (~>
-      ;; Move internal request to servicing request if standing still
-      (if (and (not (empty? commands)) (symbol=? direction 'halt))
-        (let ([oldest-command (foldl (lambda (c s) (if (< (request-timestamp c) (request-timestamp s)) c s)) (first commands) (rest commands))])
-          (lens-set this:servicing elevators (remove-duplicates (cons oldest-command servicing))))
-        elevators)
-      ;; Add all eligible commands to servicing
-      (lens-set this:servicing _
-        (~>
-          (filter
-            (lambda (x)
-              (or
-                (symbol=? direction 'halt)
-                (and (symbol=? direction 'up) (> (request-floor x) position))
-                (and (symbol=? direction 'down) (< (request-floor x) position))))
-            commands)
-          (append servicing)
-          remove-duplicates)))))
+    ;; Look at direction of travel and floor to find eligible commands
+    ;; How? First find direction of travel
+    ; direction
+    ;; if it's halted, all commands are eligible
+    ;; Else, all commands that are located above/under position in that direction
+    (let ([ts request-timestamp])
+      (let loop
+          ([eligible
+            (remove* servicing
+              (cond
+                ([symbol=? direction 'halt]  commands)
+                ([symbol=? direction 'up]    (filter (lambda (x) (> (request-floor x) position)) commands))
+                ([symbol=? direction 'down]  (filter (lambda (x) (< (request-floor x) position)) commands))))])
+        (if (not (empty? eligible))
+          ;; Pick the eldest
+          (let ([best (foldl (lambda (c s) (if (< (ts c) (ts s)) c s)) (first eligible) (rest eligible))])
+            (lens-transform this:servicing elevators (curry cons best)))
+          elevators)))))
+    ; (~>
+
+    ;   ;; Move internal request to servicing request if standing still
+    ;   (if (and (not (empty? commands)) (symbol=? direction 'halt))
+    ;     (let ([oldest-command (foldl (lambda (c s) (if (< (request-timestamp c) (request-timestamp s)) c s)) (first commands) (rest commands))])
+    ;       (lens-set this:servicing elevators (remove-duplicates (cons oldest-command servicing))))
+    ;     elevators)
+    ;   ;; Add all eligible commands to servicing
+    ;   (lens-set this:servicing _
+    ;     (~>
+    ;       (filter
+    ;         (lambda (x)
+    ;           (or
+    ;             (symbol=? direction 'halt)
+    ;             (and (symbol=? direction 'up)   (> (request-floor x) position))
+    ;             (and (symbol=? direction 'down) (< (request-floor x) position))))
+    ;         commands)
+    ;       (append servicing)
+    ;       remove-duplicates)))))
 
 ;; Sort the currently servicing requests
 ;;
