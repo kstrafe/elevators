@@ -370,3 +370,14 @@
                 (crit "Servicing has a cycle" servicing)
                 empty)))
           servicing)))))
+
+;; Check that position is wihtin allowed limits.
+;; This includes checking that position is not below the floor
+;; and that position is not higher than the highest floor.
+(define (check-for-fatal-situations elevators)
+  (let ([position (lens-view this:position elevators)])
+    (if (or (negative? position) (>= position floor-count))
+      (begin
+        (ftal "Position is not reachable without serious injury" position)
+        (exit 1))
+      elevators)))

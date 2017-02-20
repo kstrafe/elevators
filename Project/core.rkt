@@ -97,4 +97,5 @@
               set-motor-direction-to-task!
               prune-done-requests
               prune-servicing-requests
-              detect-and-remove-floor-cycle)))))))
+              detect-and-remove-floor-cycle
+              check-for-fatal-situations)))))))
