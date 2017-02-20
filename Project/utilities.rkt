@@ -134,11 +134,13 @@
             (~>
               (map (curry lens-view any:state) (hash-values hash))
               (map (lambda (x) (list x (compute-direction-of-travel x))) _)
-              (map (lambda (x) (append x (list (compute-direction-to-travel (first x) (list top-request))))) _)
-              (map (lambda (x) (append x (list (request-direction top-request)))) _)
-              (map (lambda (x) (append x (list (elevator-request-direction (first x))))) _)
-              (map (lambda (x) (append x (list (state-position (first x))))) _)
-              (map (lambda (x) (append x (list (request-floor top-request)))) _)
+              (map (lambda (x) (append x (list
+                (compute-direction-to-travel (first x) (list top-request))
+                (request-direction top-request)
+                (elevator-request-direction (first x))
+                (state-position (first x))
+                (request-floor top-request)))) _)
+              trce*
               ;; If we have request higher than current, and we're NOT in halt, then we MUST drop it
               (filter
                 (lambda (x)
