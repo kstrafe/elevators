@@ -14,11 +14,11 @@
 
 ;; Map each value in a hash-table
 (define (map-hash-table hash function)
-  (foldl (lambda (x s) (hash-set s x (function (hash-ref s x)))) hash (hash-keys hash)))
+  (for/hash ([(k v) (in-hash hash)]) (values k (function v))))
 
 ;; Remove all key-value pairs where (predicate value) is true
 (define (hash-remove-predicate hash predicate)
-  (foldl (lambda (x s) (if (predicate (hash-ref s x)) (hash-remove s x) s)) hash (hash-keys hash)))
+  (for/hash ([(k v) (in-hash hash)] #:when (not (predicate v))) (values k v)))
 
 ;; Is the request the same (disregarding timestamp)
 (define (same-request? left right)
