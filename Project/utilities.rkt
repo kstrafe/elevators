@@ -348,3 +348,25 @@
         (lens-set this:opening         _ door-open-iterations)
         prune-servicing-requests)
       hash)))
+
+;; Floor cycles occur when the elevator is servicing (say) floor 4 and 6, and is currently at floor 5
+;; The sorting of these requests will flip the direction during each iteration,
+;; making the motor go up and down all the time.
+;;
+;; This should never happen according to the logic we have defined.
+;; Our rules always check if the state would be legitimate and not have any cycles.
+;; However, if it ever comes to that, that a cycle is detected, we clean
+;; the servicing request list by removing all requests from it whilst
+;; logging a critical message.
+(define (detect-and-remove-floor-cycle elevators)
+  (let ([position (list (lens-view this:position elevators))])
+    (lens-transform this:servicing elevators
+      (lambda (servicing)
+        (if (not (empty? servicing))
+          (let ([servicing* (map request-floor (sort servicing < #:key request-floor))])
+            (if (or (apply <= (append position servicing*)) (apply <= (append servicing* position)))
+              servicing
+              (begin
+                (crit "Servicing has a cycle" servicing)
+                empty)))
+          servicing)))))

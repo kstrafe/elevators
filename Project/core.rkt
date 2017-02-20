@@ -96,4 +96,5 @@
               sort-servicing
               set-motor-direction-to-task!
               prune-done-requests
-              prune-servicing-requests)))))))
+              prune-servicing-requests
+              detect-and-remove-floor-cycle)))))))
