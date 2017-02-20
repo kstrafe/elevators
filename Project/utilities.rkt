@@ -151,7 +151,7 @@
                                                       ; dot = direction of travel
                       (symbol=? (second x) (third x)) ; = current-dot dot-top-request
                       (symbol=? (second x) (fourth x)) ; = current-dot direction-top-request
-                      (symbol=? (fourth x) (fifth x))) ; = direction-top-request current-top-request
+                      (or (symbol=? (fourth x) (fifth x)) (symbol=? (fifth x) 'command))) ; = direction-top-request current-top-request
                     (symbol=? (second x) 'halt))) _)
               (map first _)
               (map (lambda (x) (list (state-id x) (score-elevator-request x top-request))) _)
