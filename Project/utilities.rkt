@@ -9,6 +9,11 @@
 ;; Common tools
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Read commands from file
+(define (read-commands)
+  (with-handlers ([exn? (lambda (e) (displayln e) empty)])
+    (let ([filepath "commands"]) (if (file-exists? filepath) (file->value filepath) empty))))
+
 ;; Get the first of a list or return empty
 (define (first-or-empty list) (if (empty? list) empty (first list)))
 
@@ -61,7 +66,7 @@
 
 ;; Create a new empty elevator
 (define (make-empty-elevator id name)
-  (attributes (state id name 0 empty empty empty empty 0) time-to-live (current-inexact-milliseconds)))
+  (attributes (state id name 0 empty empty (read-commands) empty 0) time-to-live (current-inexact-milliseconds)))
 
 ;; Calculate which call requests are available to pick
 ;;
@@ -236,6 +241,39 @@
 ;; Assign call requests to elevators
 (define (assign-call-requests hash)
   (process-available-call-requests hash (compute-available-call-requests hash)))
+
+;; Store commands locally, to be restored in case of power loss
+(define (store-commands elevators)
+  (with-handlers ([exn? (lambda (e) (displayln e))])
+    (with-output-to-file "commands" (lambda () (write (lens-view this:command elevators))) #:exists 'replace))
+  elevators)
+
+;; Compute which commands are going to be serviced
+(define (service-commands elevators)
+  (let* ([state (lens-view this:state elevators)]
+         [position (lens-view this:position elevators)]
+         [servicing (lens-view this:servicing elevators)]
+         [commands (lens-view this:command elevators)]
+         [opening (lens-view this:opening elevators)]
+         [direction (compute-direction-of-travel state)])
+    (~>
+      ;; Move internal request to servicing request if standing still
+      (if (and (not (empty? commands)) (symbol=? direction 'halt))
+        (let ([oldest-command (foldl (lambda (c s) (if (< (request-timestamp c) (request-timestamp s)) c s)) (first commands) (rest commands))])
+          (lens-set this:servicing elevators (remove-duplicates (cons oldest-command servicing))))
+        elevators)
+      ;; Add all eligible commands to servicing
+      (lens-set this:servicing _
+        (~>
+          (filter
+            (lambda (x)
+              (or
+                (symbol=? direction 'halt)
+                (and (symbol=? direction 'up) (> (request-floor x) position))
+                (and (symbol=? direction 'down) (< (request-floor x) position))))
+            commands)
+          (append servicing)
+          remove-duplicates)))))
 
 ;; Sort the currently servicing requests
 ;;

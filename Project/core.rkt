@@ -22,7 +22,7 @@
   (if (not (complex? complex-struct))
     (complex (list 0 0) (list empty empty) (list empty empty) empty)
     (let ([complex* (lens-transform complex-elevators-lens complex-struct discuss-good-solution-with-other-elevators-and-execute)])
-        (~>
+      (~>
         (lens-transform complex-floors-lens complex*
           (lambda (floors) (list (lens-view (lens-compose this:position  complex-elevators-lens) complex*) (first floors))))
         (lens-transform complex-calls-lens _
@@ -63,6 +63,8 @@
               unify-requests
               prune-call-requests-that-are-done
               assign-call-requests
+              store-commands
+              service-commands
               sort-servicing
               set-motor-direction-to-task!
               prune-done-requests

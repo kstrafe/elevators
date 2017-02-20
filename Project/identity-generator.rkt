@@ -20,8 +20,7 @@
       (values (uuid-generate) (generate-name)))])
     (let ([filepath "identity"])
       (if (file-exists? filepath)
-        (with-input-from-file filepath
-          (lambda () (apply values (file->value filepath))))
+          (apply values (file->value filepath))
         (let ([id (uuid-generate)]
               [name (generate-name)])
           (with-output-to-file filepath

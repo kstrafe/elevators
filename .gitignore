@@ -5,8 +5,9 @@
 [._]*.s[a-w][a-z]
 [._]s[a-w][a-z]
 
-# Project: UUID and name files
+# Project:
 identity
+commands
 
 elev.o
 io.o

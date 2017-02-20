@@ -1,29 +1,21 @@
 #lang racket
 
-(provide (all-defined-out))
+(provide (except-out (all-defined-out) make-loggers))
 
-(require racket/pretty racket/syntax
-  (for-syntax racket/syntax))
+(require racket/syntax (for-syntax racket/syntax syntax/parse))
 
-(define-syntax (generate-stream-logger syn)
-  (let* ([f (cdr (syntax->datum syn))]
-         [n (for/list ([i f]) (format-symbol "~a*" i))])
-    (datum->syntax syn
-      `(begin ,@(for/list ([i n])
-        `(define-syntax-rule (,i expr)
+(define-syntax (make-loggers stx)
+  (syntax-parse stx
+    [(_ name:id ...+)
+      (with-syntax ([(rename ...) (for/list ([name-e (syntax-e #'(name ...))]) (format-id stx "~a*" name-e))])
+        #'(begin
           (begin
-            (let ([e expr])
-              (pretty-write (list ',i '_ '= e) (current-error-port))
-              e))))))))
+            (...
+              (define-syntax-rule (name expr ...)
+                (begin
+                  (pretty-write `(,(format-symbol "~a:" 'name) expr = ,expr) (current-error-port)) ...)))
+            (define (rename expr)
+              (pretty-write `(,(format-symbol "~a:" 'rename) _ = ,expr) (current-error-port))
+              expr)) ...))]))
 
-;; Create custom loggers that pretty-writes to standard error
-(define-syntax-rule (generate-loggers type ...)
-  (begin
-    (...
-      (define-syntax-rule (type expr ...)
-        (begin
-          (pretty-write `(,(format-symbol "~a:" 'type) expr = ,expr) (current-error-port)) ...))) ...))
-
-;; TODO Clean this mess up into a single macro call!
-(generate-loggers trce dbug info warn erro crit ftal)
-(generate-stream-logger trce dbug info warn erro crit ftal)
+(make-loggers trce dbug info warn erro crit ftal)
