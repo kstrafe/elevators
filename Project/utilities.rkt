@@ -134,11 +134,13 @@
             (~>
               (map (curry lens-view any:state) (hash-values hash))
               (map (lambda (x) (list x (compute-direction-of-travel x))) _)
-              (map (lambda (x) (append x (list (compute-direction-to-travel (first x) (list top-request))))) _)
-              (map (lambda (x) (append x (list (request-direction top-request)))) _)
-              (map (lambda (x) (append x (list (elevator-request-direction (first x))))) _)
-              (map (lambda (x) (append x (list (state-position (first x))))) _)
-              (map (lambda (x) (append x (list (request-floor top-request)))) _)
+              (map (lambda (x) (append x (list
+                (compute-direction-to-travel (first x) (list top-request))
+                (request-direction top-request)
+                (elevator-request-direction (first x))
+                (state-position (first x))
+                (request-floor top-request)))) _)
+              trce*
               ;; If we have request higher than current, and we're NOT in halt, then we MUST drop it
               (filter
                 (lambda (x)
@@ -151,7 +153,7 @@
                                                       ; dot = direction of travel
                       (symbol=? (second x) (third x)) ; = current-dot dot-top-request
                       (symbol=? (second x) (fourth x)) ; = current-dot direction-top-request
-                      (symbol=? (fourth x) (fifth x))) ; = direction-top-request current-top-request
+                      (or (symbol=? (fourth x) (fifth x)) (symbol=? (fifth x) 'command))) ; = direction-top-request current-top-request
                     (symbol=? (second x) 'halt))) _)
               (map first _)
               (map (lambda (x) (list (state-id x) (score-elevator-request x top-request))) _)
@@ -256,24 +258,43 @@
          [commands (lens-view this:command elevators)]
          [opening (lens-view this:opening elevators)]
          [direction (compute-direction-of-travel state)])
-    (~>
-      ;; Move internal request to servicing request if standing still
-      (if (and (not (empty? commands)) (symbol=? direction 'halt))
-        (let ([oldest-command (foldl (lambda (c s) (if (< (request-timestamp c) (request-timestamp s)) c s)) (first commands) (rest commands))])
-          (lens-set this:servicing elevators (remove-duplicates (cons oldest-command servicing))))
-        elevators)
-      ;; Add all eligible commands to servicing
-      (lens-set this:servicing _
-        (~>
-          (filter
-            (lambda (x)
-              (or
-                (symbol=? direction 'halt)
-                (and (symbol=? direction 'up) (> (request-floor x) position))
-                (and (symbol=? direction 'down) (< (request-floor x) position))))
-            commands)
-          (append servicing)
-          remove-duplicates)))))
+    ;; Look at direction of travel and floor to find eligible commands
+    ;; How? First find direction of travel
+    ; direction
+    ;; if it's halted, all commands are eligible
+    ;; Else, all commands that are located above/under position in that direction
+    (let ([ts request-timestamp])
+      (let loop
+          ([eligible
+            (remove* servicing
+              (cond
+                ([symbol=? direction 'halt]  commands)
+                ([symbol=? direction 'up]    (filter (lambda (x) (> (request-floor x) position)) commands))
+                ([symbol=? direction 'down]  (filter (lambda (x) (< (request-floor x) position)) commands))))])
+        (if (not (empty? eligible))
+          ;; Pick the eldest
+          (let ([best (foldl (lambda (c s) (if (< (ts c) (ts s)) c s)) (first eligible) (rest eligible))])
+            (lens-transform this:servicing elevators (curry cons best)))
+          elevators)))))
+    ; (~>
+
+    ;   ;; Move internal request to servicing request if standing still
+    ;   (if (and (not (empty? commands)) (symbol=? direction 'halt))
+    ;     (let ([oldest-command (foldl (lambda (c s) (if (< (request-timestamp c) (request-timestamp s)) c s)) (first commands) (rest commands))])
+    ;       (lens-set this:servicing elevators (remove-duplicates (cons oldest-command servicing))))
+    ;     elevators)
+    ;   ;; Add all eligible commands to servicing
+    ;   (lens-set this:servicing _
+    ;     (~>
+    ;       (filter
+    ;         (lambda (x)
+    ;           (or
+    ;             (symbol=? direction 'halt)
+    ;             (and (symbol=? direction 'up)   (> (request-floor x) position))
+    ;             (and (symbol=? direction 'down) (< (request-floor x) position))))
+    ;         commands)
+    ;       (append servicing)
+    ;       remove-duplicates)))))
 
 ;; Sort the currently servicing requests
 ;;
@@ -282,6 +303,7 @@
 ;; make the elevator turn around.
 (define (sort-servicing hash)
   (let ([direction (compute-direction-of-travel (lens-view this:state hash))])
+    (dbug direction)
     (lens-transform this:servicing hash
       (lambda (x)
         (if (symbol=? direction 'halt)
