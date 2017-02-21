@@ -17,6 +17,12 @@
           [cel complex-elevators-lens] [lt lens-transform])
       (~>
         complex*
+        (lens-transform cel _ (lambda (elevators)
+          (~>
+            elevators
+            update-position#io
+            store-commands#io
+            set-motor-direction-to-task#io)))
         (lt complex-floors-lens   _ (lambda (floors)  (list (lens-view (lens-compose this:position  cel) complex*) (first floors))))
         (lt complex-calls-lens    _ (lambda (buttons) (list (lens-view (lens-compose this:call      cel) complex*) (first buttons))))
         (lt complex-commands-lens _ (lambda (buttons) (list (lens-view (lens-compose this:command   cel) complex*) (first buttons))))
@@ -50,14 +56,11 @@
               remove-all-dead-elevators
               decrement-all-time-to-live
               ; trce* ; You can add a trce* anywhere inside a ~> to print the state
-              update-position#io
               unify-requests
               prune-call-requests-that-are-done
               assign-call-requests
-              store-commands#io
               service-commands
               sort-servicing
-              set-motor-direction-to-task#io
               prune-done-requests
               prune-servicing-requests
               detect-and-remove-floor-cycle

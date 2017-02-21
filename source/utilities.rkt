@@ -22,8 +22,11 @@
 ;; IMPURE : This procedure is impure as it reads from a file ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (read-commands#io)
-  (with-handlers ([exn? (lambda (e) (displayln e) empty)])
-    (let ([filepath "temporaries/commands"]) (if (file-exists? filepath) (file->value filepath) empty))))
+  (with-handlers ([exn? (lambda (error) (warn error) empty)])
+    (let* ([filepath "temporaries/commands"]
+           [result (if (file-exists? filepath) (file->value filepath) empty)])
+      (if (eof-object? result) empty result))))
+
 
 ;; Get the first of a list or return empty
 (define (first-or-empty list) (if (empty? list) empty (first list)))
@@ -336,12 +339,13 @@
 ;; IMPURE : This procedure is impure as it sets the direction of the elevator motor ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (set-motor-direction-to-task#io elevators)
-  (let ([servicing-requests (lens-view this:servicing elevators)])
-    (when (not (empty? servicing-requests))
-      (~>
-        (first servicing-requests)
-        request-floor
-        move-to-floor#io)))
+  (when (not (positive? (lens-view this:opening elevators)))
+    (let ([servicing-requests (lens-view this:servicing elevators)])
+      (when (not (empty? servicing-requests))
+        (~>
+          (first servicing-requests)
+          request-floor
+          move-to-floor#io))))
   elevators)
 
 ;; Ensure that done-requests doesn't grow without bounds
