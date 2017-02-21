@@ -1,15 +1,8 @@
-# VIM: Temp files
-*~
-
-# VIM: Swap-files
-[._]*.s[a-w][a-z]
-[._]s[a-w][a-z]
-
-# Project:
-temporaries/identity
-temporaries/commands
-
-source/elevator-hardware/elev.o
-source/elevator-hardware/io.o
-source/elevator-hardware/cloc
-source/elevator-hardware/libelevator-hardware.so*
+/*
+!.gitignore
+!LICENSE.md
+!README.md
+!resources/
+!simulator/
+!source/
+!temporaries/
