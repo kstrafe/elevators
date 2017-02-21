@@ -13,14 +13,13 @@
   ; (trce complex-struct)
   (if (not (complex? complex-struct))
     (complex (list 0 0) (list empty empty) (list empty empty) empty)
-    (let ([complex* (lens-transform complex-elevators-lens complex-struct discuss-good-solution-with-other-elevators-and-execute)])
+    (let ([complex* (lens-transform complex-elevators-lens complex-struct discuss-good-solution-with-other-elevators-and-execute)]
+          [cel complex-elevators-lens] [lt lens-transform])
       (~>
-        (lens-transform complex-floors-lens complex*
-          (lambda (floors) (list (lens-view (lens-compose this:position  complex-elevators-lens) complex*) (first floors))))
-        (lens-transform complex-calls-lens _
-          (lambda (buttons) (list (lens-view (lens-compose this:call     complex-elevators-lens) complex*) (first buttons))))
-        (lens-transform complex-commands-lens _
-          (lambda (buttons) (list (lens-view (lens-compose this:command  complex-elevators-lens) complex*) (first buttons))))
+        complex*
+        (lt complex-floors-lens   _ (lambda (floors)  (list (lens-view (lens-compose this:position  cel) complex*) (first floors))))
+        (lt complex-calls-lens    _ (lambda (buttons) (list (lens-view (lens-compose this:call      cel) complex*) (first buttons))))
+        (lt complex-commands-lens _ (lambda (buttons) (list (lens-view (lens-compose this:command   cel) complex*) (first buttons))))
         (if-changed-call complex-floors set-floor-indicator#io)
         (if-changed-call complex-calls set-call-lights#io)
         (if-changed-call complex-commands set-command-lights#io)))))

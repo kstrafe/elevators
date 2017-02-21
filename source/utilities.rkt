@@ -147,16 +147,14 @@
         (~>
           (map (curry lens-view any:state) (hash-values elevators))
           (map (lambda (elevator)
-            (let ([elevator* (list elevator)])
-              (append
-                elevator*
-                (list
-                  (compute-direction-of-travel     elevator)
-                  (compute-direction-to-travel     elevator (list top-request))
-                  (request-direction               top-request)
-                  (elevator-request-direction      elevator)
-                  (state-position                  elevator)
-                  (request-floor                   top-request))))) _)
+            (list
+              elevator
+              (compute-direction-of-travel  elevator)
+              (compute-direction-to-travel  elevator (list top-request))
+              (request-direction            top-request)
+              (elevator-request-direction   elevator)
+              (state-position               elevator)
+              (request-floor                top-request))) _)
           (filter (lambda (elev-info)
             (or
               (and
