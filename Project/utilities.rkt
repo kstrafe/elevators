@@ -221,10 +221,15 @@
 ;; IMPURE : This procedure is impure as it reads a value coming from the detectors ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (update-position! elevators)
-  (let ([floor (any-new-floor-reached?)])
-    (if floor
-      (lens-set this:position elevators floor)
-      elevators)))
+  (if (is-blocked?)
+    (begin
+      (crit "Motor is blocked")
+      (sleep 1)
+      (update-position! elevators))
+    (let ([floor (any-new-floor-reached?)])
+      (if floor
+        (lens-set this:position elevators floor)
+        elevators))))
 
 ;; Unify (create a list containing all unique) done-requests from all elevators
 ;; Also unify all call-requests from all elevators.
