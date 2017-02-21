@@ -13,7 +13,20 @@ Elevators also need some (sub-)optimal allocation algorithm to ensure that a goo
 
 ### Design
 
-TODO
+The design is *extremely* data-oriented. We started contemplating the required information in order for elevators to make
+good decisions. We arrived at the following data structure:
+
+```
+(state (
+	id                  ; A UUID. It will be stored, so restarting will give you the same UUID. Reset it by clearing temporaries.
+	name                ; A human-readable name given to the elevator (to make communication and detection easier)
+	position            ; The last known position of the elevator (in-between floors has no position)
+	servicing-requests  ; The requests that an elevator is currently servicing
+	call-requests       ; The available call requests (buttons from outside the elevator) for all elevators
+	command-requests    ; The available command requests (buttons from inside the elevator), only for the elevator holding it
+	done-requests       ; The call requests that have been finished
+	opening-time))      ; The current open state of the doors. Decrements until zero and then continues servicing floors.
+```
 
 ### Methods
 
