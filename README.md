@@ -24,8 +24,8 @@ TODO: Write usage instructions
 
 ## Contributors
 
-[BourgondAries](https://github.com/BourgondAries)
-[dagerikhl](https://github.com/dagerikhl)
+* [BourgondAries](https://github.com/BourgondAries)
+* [dagerikhl](https://github.com/dagerikhl)
 
 ## License
 
