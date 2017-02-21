@@ -4,12 +4,3 @@
 # VIM: Swap-files
 [._]*.s[a-w][a-z]
 [._]s[a-w][a-z]
-
-# Project:
-identity
-commands
-
-elev.o
-io.o
-cloc
-libelevator-hardware.so*
