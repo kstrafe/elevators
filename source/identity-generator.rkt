@@ -4,7 +4,7 @@
 
 (require libuuid)
 
-(define names (file->value "names"))
+(define names (file->value "resources/names"))
 
 (define (select-random-name)
   (let ([len (length names)])
@@ -18,7 +18,7 @@
     (lambda (e)
       (displayln e)
       (values (uuid-generate) (generate-name)))])
-    (let ([filepath "identity"])
+    (let ([filepath "temporaries/identity"])
       (if (file-exists? filepath)
           (apply values (file->value filepath))
         (let ([id (uuid-generate)]

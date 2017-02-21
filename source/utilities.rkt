@@ -23,7 +23,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (read-commands!)
   (with-handlers ([exn? (lambda (e) (displayln e) empty)])
-    (let ([filepath "commands"]) (if (file-exists? filepath) (file->value filepath) empty))))
+    (let ([filepath "temporaries/commands"]) (if (file-exists? filepath) (file->value filepath) empty))))
 
 ;; Get the first of a list or return empty
 (define (first-or-empty list) (if (empty? list) empty (first list)))
@@ -289,7 +289,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (store-commands! elevators)
   (with-handlers ([exn? (lambda (error) (crit error))])
-    (with-output-to-file "commands" (lambda () (pretty-write (lens-view this:command elevators))) #:exists 'replace))
+    (with-output-to-file "temporaries/commands" (lambda () (pretty-write (lens-view this:command elevators))) #:exists 'replace))
   elevators)
 
 ;; Compute which commands are going to be serviced by checking the current position

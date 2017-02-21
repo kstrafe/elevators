@@ -13,7 +13,7 @@
 
 ;; Macro to remove 'core' boilerplate
 (define-syntax-rule (reloadable name)
-  (define name (reloadable-entry-point->procedure (make-reloadable-entry-point 'name (string-append (symbol->string 'name) ".rkt")))))
+  (define name (reloadable-entry-point->procedure (make-reloadable-entry-point 'name (build-path "source" (string-append (symbol->string 'name) ".rkt"))))))
 
 ;; Create a reloadable entry point
 (reloadable core)
