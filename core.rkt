@@ -9,12 +9,6 @@
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)
 
-(define (if-changed-call complex accessor procedure)
-  (let ([elems (accessor complex)])
-    (when (not (equal? (first elems) (second elems)))
-      (procedure (first elems))))
-  complex)
-
 (define (core complex-struct)
   ; (trce complex-struct)
   (if (not (complex? complex-struct))

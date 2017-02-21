@@ -9,6 +9,14 @@
 ;; Common tools
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Limit the amount of network calls by only calling when
+;; a value actually changes.
+(define (if-changed-call complex accessor procedure)
+  (let ([elems (accessor complex)])
+    (when (not (equal? (first elems) (second elems)))
+      (procedure (first elems))))
+  complex)
+
 ;; Read commands from file
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMPURE : This procedure is impure as it reads from a file ;;
