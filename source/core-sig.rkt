@@ -1,5 +1,3 @@
-#lang racket
+#lang racket/signature
 
-(provide core^)
-
-(define-signature core^ (core))
+core ; (struct -> struct)
