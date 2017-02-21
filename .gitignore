@@ -7,3 +7,12 @@
 
 # Exercises:
 ex6*/count
+
+# Project:
+temporaries/identity
+temporaries/commands
+
+source/elevator-hardware/elev.o
+source/elevator-hardware/io.o
+source/elevator-hardware/cloc
+source/elevator-hardware/libelevator-hardware.so*
