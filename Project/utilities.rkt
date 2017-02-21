@@ -109,6 +109,7 @@
   (abs (- (state-position state) (request-floor request))))
 
 ;; Sorting function that sorts on id if the scores are equal
+;; TODO Remove this function after using argmin instead of sort
 (define (id-score-sort id-score-1 id-score-2)
   (cond
     ([< (second id-score-1) (second id-score-2)] #t)
@@ -116,70 +117,81 @@
     ([string<? (first id-score-1) (first id-score-2)] #t)
     ([string>=? (first id-score-1) (first id-score-2)] #f)))
 
-;; Find the direction of an elevator's request
+;; Find the direction of an elevator's current top request
 (define (elevator-request-direction elevator)
   (let ([request (first-or-empty (state-servicing-requests elevator))])
     (if (empty? request)
       'halt
+      ;; TODO Default to command/halt when no other requests are available
       (request-direction request))))
 
 ;; Assign available call requests to the best possible elevators
-(define (process-available-call-requests hash requests)
+;;
+;; This function computes all call requests for all elevators. This computation
+;; makes sure that all elevators arrive at the exact same assigned calls given
+;; the same input elevators and requests.
+;; The function tries to optimize distance to a floor in addition to time since a
+;; button press.
+;; The tie breaker is the elevator's UUID. If both elevators score equally, the one
+;; with the lexicographically lesser UUID gets to take that call.
+(define (process-available-call-requests elevators requests)
   (define any:state attributes-state-lens)
   (let ([top-request (first-or-empty requests)])
     (if (empty? top-request)
-      hash
-      (begin
-        (let ([best-id
-            (~>
-              (map (curry lens-view any:state) (hash-values hash))
-              (map (lambda (x) (list x (compute-direction-of-travel x))) _)
-              (map (lambda (x) (append x (list
-                (compute-direction-to-travel (first x) (list top-request))
-                (request-direction top-request)
-                (elevator-request-direction (first x))
-                (state-position (first x))
-                (request-floor top-request)))) _)
-              trce*
-              ;; If we have request higher than current, and we're NOT in halt, then we MUST drop it
-              (filter
-                (lambda (x)
-                  (or
-                    (and
-                      (match (second x)
-                        ('up (< (sixth x) (seventh x)))
-                        ('down (> (sixth x) (seventh x)))
-                        (_ #t))
-                                                      ; dot = direction of travel
-                      (symbol=? (second x) (third x)) ; = current-dot dot-top-request
-                      (symbol=? (second x) (fourth x)) ; = current-dot direction-top-request
-                      (or (symbol=? (fourth x) (fifth x)) (symbol=? (fifth x) 'command))) ; = direction-top-request current-top-request
-                    (symbol=? (second x) 'halt))) _)
-              (map first _)
-              (map (lambda (x) (list (state-id x) (score-elevator-request x top-request))) _)
-              (sort id-score-sort)
-              first-or-empty
-              first-or-empty)])
-          (process-available-call-requests
-            (if (empty? best-id)
-              hash
-              (lens-transform (other:servicing best-id) hash (curry cons top-request)))
-            (rest requests))
-          )))))
+      elevators
+      (let ([best-id
+        (~>
+          (map (curry lens-view any:state) (hash-values elevators))
+          (map (lambda (elevator)
+            (let ([elevator* (list elevator)])
+              (append
+                elevator*
+                (list
+                  (compute-direction-of-travel     elevator)
+                  (compute-direction-to-travel     elevator (list top-request))
+                  (request-direction               top-request)
+                  (elevator-request-direction      elevator)
+                  (state-position                  elevator)
+                  (request-floor                   top-request))))) _)
+          (filter (lambda (elev-info)
+            (or
+              (and
+                (match (second elev-info)
+                  ('up   (< (sixth elev-info) (seventh elev-info)))
+                  ('down (> (sixth elev-info) (seventh elev-info)))
+                  (_ #t))
+                (symbol=? (second elev-info) (third  elev-info))
+                (symbol=? (second elev-info) (fourth elev-info))
+                ;; TODO When pos = 0 and there is a call down at 8, then it will ignore up at 5
+                ;; This is intended. But if we add a single command, then the up at 5 will be acquired too
+                ;; We need to change the elevator-request-direction function to skip over commands
+                (or (symbol=? (fourth elev-info) (fifth elev-info)) (symbol=? (fifth elev-info) 'command)))
+              (symbol=? (second elev-info) 'halt))) _)
+          (map first _)
+          (map (lambda (elevator) (list (state-id elevator) (score-elevator-request elevator top-request))) _)
+          ;; TODO Use argmin here instead of sort. It's more idiomatic
+          (sort id-score-sort)
+          first-or-empty
+          first-or-empty)])
+        (process-available-call-requests
+          (if (empty? best-id)
+            elevators
+            (lens-transform (other:servicing best-id) elevators (curry cons top-request)))
+          (rest requests))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Pipe algorithms
+;; Core pipe algorithms                                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Add the button presses to the current elevator's state
-(define (fold-buttons-into-elevators buttons elevators)
+;; Insert the button presses to the current elevator's state
+(define (insert-button-presses-into-this-elevator-as-requests buttons elevators)
   (let* ([command-requests  (filter command-request? buttons)]
          [elevators*        (lens-transform this:command elevators (curry prune-requests command-requests))]
          [call-requests     (filter call-request? buttons)]
          [elevators**       (lens-transform this:call elevators* (curry prune-requests call-requests))])
     elevators**))
 
-;; Turn messages make into hash-table of attributes
+;; Turn messages into a hash-table of attributes (exactly like the elevators hash-table)
 ;; This keeps only the latest version of a message
 ;; The 'messages' var is of the form ((msg timestamp) ...)
 (define (filter-newest-to-hash messages)
@@ -192,47 +204,61 @@
     (make-immutable-hash)
     messages))
 
-;; Union of elevators and messages, where the newest timestamp gets to stay
+;; Hash-table union of elevators and messages containing elevators
+;; Each message and elevator (in elevators) has a timestamp.
+;; Sometimes messages are delayed, so the current elevator timestamp is larger
+;; than a message. We must thus discard this old message.
 (define (unify-messages-and-elevators messages elevators)
   (let ([ts attributes-timestamp])
-    (hash-union messages elevators #:combine (lambda (a b) (if (> (ts a) (ts b)) a b)))))
+    (hash-union messages elevators #:combine (lambda (elev-1 elev-2) (if (> (ts elev-1) (ts elev-2)) elev-1 elev-2)))))
 
-;; Force our own elevator to be inserted, regardless of a received message
+;; This elevator is inside the elevators hash-table, messages normally update all elevators
+;; in this hash-table, but we don't want to rely on a message from itself to itself (because it can get lost)
+;; so we manually insert this elevator into the elevators hash-table to ensure that it will
+;; always exist.
 (define (insert-self-into-elevators elevators folded-elevators)
   (lens-set this:state elevators (lens-view this:state folded-elevators)))
 
 ;; Remove all elevators whose time-to-live value is negative
-(define (remove-dead-elevators elevators)
-  (hash-remove-predicate elevators (lambda (x) (negative? (attributes-time-to-live x)))))
+(define (remove-all-dead-elevators elevators)
+  (hash-remove-predicate elevators (lambda (elevator) (negative? (attributes-time-to-live elevator)))))
 
-;; Decrement all 'time-to-live's
-(define (decrement-time-to-live elevators)
+;; Decrement 'time-to-live' in for each elevator
+(define (decrement-all-time-to-live elevators)
   (map-hash-table elevators (lambda (x) (lens-transform attributes-time-to-live-lens x sub1))))
 
 ;; Update the position number in the current elevator
-(define (update-position hash)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; IMPURE : This procedure is impure as it reads a value coming from the detectors ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (update-position! elevators)
   (let ([floor (any-new-floor-reached?)])
     (if floor
-      (lens-set this:position hash floor)
-      hash)))
+      (lens-set this:position elevators floor)
+      elevators)))
 
-;; Unify all done-requests from all elevators
-;; Also unify all call-requests from all elevators
+;; Unify (create a list containing all unique) done-requests from all elevators
+;; Also unify all call-requests from all elevators.
+;; All elevators then have the exact same done-requests and call-requests lists.
 (define (unify-requests elevators)
-  (define (unify-requests* all-elevators accessor)
+  (define (unify-requests* elevators accessor)
     (~>
-      (map (curry lens-view accessor) (hash-values all-elevators))
+      (map (curry lens-view accessor) (hash-values elevators))
       flatten
       remove-duplicates
       (sort < #:key request-timestamp)
-      (define unified-dones _))
-    (map-hash-table all-elevators (lambda (x)
-      (lens-set accessor x unified-dones))))
+      (define unified _))
+    (map-hash-table elevators (lambda (x)
+      (lens-set accessor x unified))))
   (~>
     (unify-requests* elevators done-of-hash)
     (unify-requests* call-of-hash)))
 
 ;; Remove the requests from call-requests that are also in done-requests
+;;
+;; Set all call-requests lists in all elevators to be the same pruned version.
+;; Pruned in the sense that all done-requests that are also in call-requests
+;; are removed from call-requests.
 (define (prune-call-requests-that-are-done elevators)
   (let* ([state   (first (hash-values elevators))]
          [done    (lens-view done-of-hash state)]
@@ -241,29 +267,34 @@
     (map-hash-table elevators (lambda (attribute) (lens-set call-of-hash attribute calls*)))))
 
 ;; Assign call requests to elevators
-(define (assign-call-requests hash)
-  (process-available-call-requests hash (compute-available-call-requests hash)))
+;;
+;; Filters out all feasible call requests (requests that aren't already taken by other elevators)
+;; and runs through each of them to find out which elevator has the least distance from that request.
+;; In addition to this, the elevator is checked for having the same motion (if it had any)
+;; as the call request, and that the elevator is below/above the request depending on the request.
+(define (assign-call-requests elevators)
+  (process-available-call-requests elevators (compute-available-call-requests elevators)))
 
 ;; Store commands locally, to be restored in case of power loss
-(define (store-commands elevators)
-  (with-handlers ([exn? (lambda (e) (displayln e))])
-    (with-output-to-file "commands" (lambda () (write (lens-view this:command elevators))) #:exists 'replace))
+;;
+;; Writes the commands to a file. In case of any power loss, the elevator
+;; should read the file to restore all commands that were queued.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; IMPURE : This procedure is impure as it writes to a file ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (store-commands! elevators)
+  (with-handlers ([exn? (lambda (error) (crit error))])
+    (with-output-to-file "commands" (lambda () (pretty-write (lens-view this:command elevators))) #:exists 'replace))
   elevators)
 
-;; Compute which commands are going to be serviced
+;; Compute which commands are going to be serviced by checking the current position
+;; and the current heading. We can find out which commands to process. These commands
+;; are prepended to the servicing requests list and later sorted by another function.
 (define (service-commands elevators)
-  (let* ([state (lens-view this:state elevators)]
-         [position (lens-view this:position elevators)]
+  (let* ([position (lens-view this:position elevators)]
          [servicing (lens-view this:servicing elevators)]
          [commands (lens-view this:command elevators)]
-         [opening (lens-view this:opening elevators)]
-         [direction (compute-direction-of-travel state)])
-    ;; Look at direction of travel and floor to find eligible commands
-    ;; How? First find direction of travel
-    ; direction
-    ;; if it's halted, all commands are eligible
-    ;; Else, all commands that are located above/under position in that direction
-    (let ([ts request-timestamp])
+         [direction (compute-direction-of-travel (lens-view this:state elevators))])
       (let loop
           ([eligible
             (remove* servicing
@@ -272,39 +303,22 @@
                 ([symbol=? direction 'up]    (filter (lambda (x) (> (request-floor x) position)) commands))
                 ([symbol=? direction 'down]  (filter (lambda (x) (< (request-floor x) position)) commands))))])
         (if (not (empty? eligible))
-          ;; Pick the eldest
-          (let ([best (foldl (lambda (c s) (if (< (ts c) (ts s)) c s)) (first eligible) (rest eligible))])
-            (lens-transform this:servicing elevators (curry cons best)))
-          elevators)))))
-    ; (~>
+          (let ([best (argmin request-timestamp eligible)])
+            (service-commands (lens-transform this:servicing elevators (curry cons best))))
+          elevators))))
 
-    ;   ;; Move internal request to servicing request if standing still
-    ;   (if (and (not (empty? commands)) (symbol=? direction 'halt))
-    ;     (let ([oldest-command (foldl (lambda (c s) (if (< (request-timestamp c) (request-timestamp s)) c s)) (first commands) (rest commands))])
-    ;       (lens-set this:servicing elevators (remove-duplicates (cons oldest-command servicing))))
-    ;     elevators)
-    ;   ;; Add all eligible commands to servicing
-    ;   (lens-set this:servicing _
-    ;     (~>
-    ;       (filter
-    ;         (lambda (x)
-    ;           (or
-    ;             (symbol=? direction 'halt)
-    ;             (and (symbol=? direction 'up)   (> (request-floor x) position))
-    ;             (and (symbol=? direction 'down) (< (request-floor x) position))))
-    ;         commands)
-    ;       (append servicing)
-    ;       remove-duplicates)))))
-
-;; Sort the currently servicing requests
+;; Sort the currently servicing requests because we want to service floors in between
+;; our original destination. Say you're going from 3 to 8, and then a new request comes
+;; #s(request up 6 ...), then this request will be added such that our servicing list
+;; is (3 8 6), so we sort to (3 6 8), which services the six in-between 3 and 8.
 ;;
-;; It is assumed that assign-call-requests assigns
-;; in such a way that sorting the requests will not
-;; make the elevator turn around.
-(define (sort-servicing hash)
-  (let ([direction (compute-direction-of-travel (lens-view this:state hash))])
+;; It is assumed that assign-call-requests and service-commands assign
+;; requests in such a way that sorting the requests will not
+;; make the elevator turn around (cause a floor cycle).
+(define (sort-servicing elevators)
+  (let ([direction (compute-direction-of-travel (lens-view this:state elevators))])
     (dbug direction)
-    (lens-transform this:servicing hash
+    (lens-transform this:servicing elevators
       (lambda (x)
         (if (symbol=? direction 'halt)
           x
@@ -316,38 +330,44 @@
 
 ;; Calls move-to-floor depending on the top of the 'servicing-requests'
 ;; field in the current elevator.
-;
-;; The ! at the end of the function name denotes side-effect without altering hash.
-;; Maybe we should in general separate side effects from changing the hash table.
-(define (set-motor-direction-to-task! hash)
-  (let ([servicing-requests (lens-view this:servicing hash)])
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; IMPURE : This procedure is impure as it sets the direction of the elevator motor ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (set-motor-direction-to-task! elevators)
+  (let ([servicing-requests (lens-view this:servicing elevators)])
     (when (not (empty? servicing-requests))
       (~>
         (first servicing-requests)
         request-floor
         move-to-floor)))
-  hash)
+  elevators)
 
 ;; Ensure that done-requests doesn't grow without bounds
-(define (prune-done-requests hash)
-  (lens-transform this:done hash
+;;
+;; The done-requests list (of this elevator) can grow until it reaches
+;; a maximum size. If it goes above this size, the list is trimmed from
+;; the end, meaning that the oldest requests are removed.
+(define (prune-done-requests elevators)
+  (lens-transform this:done elevators
     (lambda (list)
       (if (> (length list) max-done-length)
         (take list max-done-length)
         list))))
 
-;; Remove requests which have been served and inform the state
-;; to open the doors
-(define (prune-servicing-requests hash)
-  (let ([servicing (first-or-empty (lens-view this:servicing hash))])
-    (if (and (not (empty? servicing)) (= (lens-view this:position hash) (request-floor servicing)))
+;; Remove requests which have been served and inform the state to open the doors
+;;
+;; If we find this elevator on the same floor as one of its requests that it's currently servicing, then
+;; this elevator must open its doors and remove this request.
+(define (prune-servicing-requests elevators)
+  (let ([servicing (first-or-empty (lens-view this:servicing elevators))])
+    (if (and (not (empty? servicing)) (= (lens-view this:position elevators) (request-floor servicing)))
       (~>
-        (lens-transform this:servicing hash rest)
-        (lens-transform this:done      _ (lambda (done) (if (call-request? servicing) (cons servicing done) done)))
+        (lens-transform this:servicing elevators rest)
+        (lens-transform this:done      _ (lambda (done)     (if (call-request? servicing)    (cons servicing done)       done)))
         (lens-transform this:command   _ (lambda (internal) (if (command-request? servicing) (remove servicing internal) internal)))
         (lens-set this:opening         _ door-open-iterations)
         prune-servicing-requests)
-      hash)))
+      elevators)))
 
 ;; Floor cycles occur when the elevator is servicing (say) floor 4 and 6, and is currently at floor 5
 ;; The sorting of these requests will flip the direction during each iteration,
@@ -367,13 +387,13 @@
             (if (or (apply <= (append position servicing*)) (apply <= (append servicing* position)))
               servicing
               (begin
-                (crit "Servicing has a cycle" servicing)
+                (crit "Servicing has a floor cycle, emptying servicing" servicing)
                 empty)))
           servicing)))))
 
-;; Check that position is wihtin allowed limits.
-;; This includes checking that position is not below the floor
-;; and that position is not higher than the highest floor.
+;; Check that position is within allowed limits.
+;; This includes checking that position is not below zero,
+;; and that position is not higher than the highest possible floor.
 (define (check-for-fatal-situations elevators)
   (let ([position (lens-view this:position elevators)])
     (if (or (negative? position) (>= position floor-count))

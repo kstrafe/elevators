@@ -78,20 +78,20 @@
               ([= current-open door-open-iterations] (elevator-hardware:open-door))
               ([= current-open 1] (elevator-hardware:close-door)))
             (lens-transform this:opening elevators sub1))
-          (let ([elevators* (fold-buttons-into-elevators (pop-button-states) elevators)])
+          (let ([elevators* (insert-button-presses-into-this-elevator-as-requests (pop-button-states) elevators)])
             (~>
               (receive)
               filter-newest-to-hash
               (unify-messages-and-elevators elevators*)
               (insert-self-into-elevators elevators*)
-              remove-dead-elevators
-              decrement-time-to-live
+              remove-all-dead-elevators
+              decrement-all-time-to-live
               trce* ; You can add a trce* anywhere inside a ~> to print the state
-              update-position
+              update-position!
               unify-requests
               prune-call-requests-that-are-done
               assign-call-requests
-              store-commands
+              store-commands!
               service-commands
               sort-servicing
               set-motor-direction-to-task!
