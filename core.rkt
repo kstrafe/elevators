@@ -4,7 +4,7 @@
 
 (require lens threading
   "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt"
-  "logger.rkt" "motor.rkt" "network.rkt" "poll-buttons.rkt" "utilities.rkt")
+  "logger.rkt" "motor.rkt" "network.rkt" "control-panel.rkt" "utilities.rkt")
 
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)
