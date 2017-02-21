@@ -9,8 +9,6 @@
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)
 
-(struct/lens complex (floors calls commands elevators) #:prefab)
-
 (define (if-changed-call complex accessor procedure)
   (let ([elems (accessor complex)])
     (when (not (equal? (first elems) (second elems)))
