@@ -108,22 +108,15 @@
 (define (score-elevator-request state request)
   (abs (- (state-position state) (request-floor request))))
 
-;; Sorting function that sorts on id if the scores are equal
-;; TODO Remove this function after using argmin instead of sort
-(define (id-score-sort id-score-1 id-score-2)
-  (cond
-    ([< (second id-score-1) (second id-score-2)] #t)
-    ([> (second id-score-1) (second id-score-2)] #f)
-    ([string<? (first id-score-1) (first id-score-2)] #t)
-    ([string>=? (first id-score-1) (first id-score-2)] #f)))
-
 ;; Find the direction of an elevator's current top request
 (define (elevator-request-direction elevator)
-  (let ([request (first-or-empty (state-servicing-requests elevator))])
-    (if (empty? request)
+  (let loop ([requests (state-servicing-requests elevator)])
+    (if (empty? requests)
       'halt
-      ;; TODO Default to command/halt when no other requests are available
-      (request-direction request))))
+      (let ([direction (request-direction (first requests))])
+        (if (symbol=? direction 'command)
+          (loop (rest requests))
+          direction)))))
 
 ;; Assign available call requests to the best possible elevators
 ;;
@@ -162,16 +155,12 @@
                   (_ #t))
                 (symbol=? (second elev-info) (third  elev-info))
                 (symbol=? (second elev-info) (fourth elev-info))
-                ;; TODO When pos = 0 and there is a call down at 8, then it will ignore up at 5
-                ;; This is intended. But if we add a single command, then the up at 5 will be acquired too
-                ;; We need to change the elevator-request-direction function to skip over commands
-                (or (symbol=? (fourth elev-info) (fifth elev-info)) (symbol=? (fifth elev-info) 'command)))
+                (or (symbol=? (fourth elev-info) (fifth elev-info))))
               (symbol=? (second elev-info) 'halt))) _)
           (map first _)
           (map (lambda (elevator) (list (state-id elevator) (score-elevator-request elevator top-request))) _)
-          ;; TODO Use argmin here instead of sort. It's more idiomatic
-          (sort id-score-sort)
-          first-or-empty
+          (sort string<? #:key first)
+          ((lambda (lst) (if (empty? lst) empty (argmin second lst))))
           first-or-empty)])
         (process-available-call-requests
           (if (empty? best-id)
@@ -317,7 +306,6 @@
 ;; make the elevator turn around (cause a floor cycle).
 (define (sort-servicing elevators)
   (let ([direction (compute-direction-of-travel (lens-view this:state elevators))])
-    (dbug direction)
     (lens-transform this:servicing elevators
       (lambda (x)
         (if (symbol=? direction 'halt)
