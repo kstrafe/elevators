@@ -16,9 +16,9 @@
   (define name (reloadable-entry-point->procedure (make-reloadable-entry-point 'name (build-path "source" (string-append (symbol->string 'name) ".rkt"))))))
 
 ;; Create a reloadable entry point
-(reloadable core)
+(reloadable initiator)
 
 ;; Main loop of the program
 (let loop ([state empty])
   (reload!)
-  (loop (core state)))
+  (loop (initiator state)))

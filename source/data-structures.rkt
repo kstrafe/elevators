@@ -21,17 +21,3 @@
 
 (define (command-request? request) (symbol=? (request-direction request) 'command))
 (define (call-request? request) (not (symbol=? (request-direction request) 'command)))
-
-;; Load/generate an identity
-(define-values (id name) (generate-or-load-identity#io))
-(info id name)
-
-(define this:state     (lens-compose attributes-state-lens (hash-ref-lens id)))
-(define this:opening   (lens-compose state-opening-time-lens attributes-state-lens (hash-ref-lens id)))
-(define this:command   (lens-compose state-command-requests-lens this:state))
-(define this:call      (lens-compose state-call-requests-lens this:state))
-(define this:position  (lens-compose state-position-lens this:state))
-(define this:done      (lens-compose state-done-requests-lens this:state))
-(define this:servicing (lens-compose state-servicing-requests-lens this:state))
-
-(define (other:servicing id) (lens-compose (lens-compose state-servicing-requests-lens attributes-state-lens (hash-ref-lens id))))
