@@ -1,18 +1,18 @@
 #lang racket
 
-(provide any-new-floor-reached? is-blocked? move-to-floor)
+(provide any-new-floor-reached?#io is-blocked?#io move-to-floor#io)
 
 (require racket/async-channel "elevator-hardware/elevator-interface.rkt" "logger.rkt")
 
-(define (any-new-floor-reached?) (async-channel-try-get-last  status-channel #f))
-(define (is-blocked?)            (async-channel-try-get-last  blocked-channel #f))
-(define (move-to-floor floor)    (async-channel-put           motor-channel  floor))
+(define (any-new-floor-reached?#io) (async-channel-try-get-last#io status-channel #f))
+(define (is-blocked?#io)            (async-channel-try-get-last#io  blocked-channel #f))
+(define (move-to-floor#io floor)    (async-channel-put           motor-channel  floor))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Get the last value in the channel.
 ;; If the channel is completely empty, return old-value.
-(define (async-channel-try-get-last channel old-value)
+(define (async-channel-try-get-last#io channel old-value)
   (let loop ([previous old-value])
     (let ([value (async-channel-try-get channel)])
       (if value
@@ -26,8 +26,8 @@
 (define poll (thread (lambda ()
   ; These values make the elevator go down to the ground floor when started
   (let loop ([target-floor 0] [previous-floor 1] [difference 0] [previous-difference 0] [time (current-inexact-milliseconds)])
-    (let* ([desired-floor  (async-channel-try-get-last motor-channel target-floor)]
-           [current        (elevator-hardware:get-floor-sensor-signal)]
+    (let* ([desired-floor  (async-channel-try-get-last#io motor-channel target-floor)]
+           [current        (elevator-hardware:get-floor-sensor-signal#io)]
            [current*       (if (negative? current) previous-floor current)]
            [difference*    (- target-floor current*)])
       (when (not (= previous-floor current*)) (async-channel-put status-channel current*))
@@ -36,7 +36,7 @@
       ;; to spam it a bit :/
 
       ; (when (not (= difference difference*))
-        (elevator-hardware:set-motor-direction
+        (elevator-hardware:set-motor-direction#io
           (cond
             [(positive? difference) 'DIRN_UP]
             [(zero?     difference) 'DIRN_STOP]

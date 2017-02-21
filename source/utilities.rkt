@@ -21,7 +21,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMPURE : This procedure is impure as it reads from a file ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (read-commands!)
+(define (read-commands#io)
   (with-handlers ([exn? (lambda (e) (displayln e) empty)])
     (let ([filepath "temporaries/commands"]) (if (file-exists? filepath) (file->value filepath) empty))))
 
@@ -77,7 +77,7 @@
 
 ;; Create a new empty elevator
 (define (make-empty-elevator id name)
-  (attributes (state id name 0 empty empty (read-commands!) empty 0) time-to-live (current-inexact-milliseconds)))
+  (attributes (state id name 0 empty empty (read-commands#io) empty 0) time-to-live (current-inexact-milliseconds)))
 
 ;; Calculate which call requests are available to pick
 ;;
@@ -231,13 +231,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMPURE : This procedure is impure as it reads a value coming from the detectors ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (update-position! elevators)
-  (if (is-blocked?)
+(define (update-position#io elevators)
+  (if (is-blocked?#io)
     (begin
       (crit "Motor is blocked")
       (sleep 1)
-      (update-position! elevators))
-    (let ([floor (any-new-floor-reached?)])
+      (update-position#io elevators))
+    (let ([floor (any-new-floor-reached?#io)])
       (if floor
         (lens-set this:position elevators floor)
         elevators))))
@@ -287,7 +287,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMPURE : This procedure is impure as it writes to a file ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (store-commands! elevators)
+(define (store-commands#io elevators)
   (with-handlers ([exn? (lambda (error) (crit error))])
     (with-output-to-file "temporaries/commands" (lambda () (pretty-write (lens-view this:command elevators))) #:exists 'replace))
   elevators)
@@ -337,13 +337,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMPURE : This procedure is impure as it sets the direction of the elevator motor ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (set-motor-direction-to-task! elevators)
+(define (set-motor-direction-to-task#io elevators)
   (let ([servicing-requests (lens-view this:servicing elevators)])
     (when (not (empty? servicing-requests))
       (~>
         (first servicing-requests)
         request-floor
-        move-to-floor)))
+        move-to-floor#io)))
   elevators)
 
 ;; Ensure that done-requests doesn't grow without bounds

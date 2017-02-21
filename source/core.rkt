@@ -21,9 +21,9 @@
           (lambda (buttons) (list (lens-view (lens-compose this:call     complex-elevators-lens) complex*) (first buttons))))
         (lens-transform complex-commands-lens _
           (lambda (buttons) (list (lens-view (lens-compose this:command  complex-elevators-lens) complex*) (first buttons))))
-        (if-changed-call complex-floors set-floor-indicator)
-        (if-changed-call complex-calls set-call-lights)
-        (if-changed-call complex-commands set-command-lights)))))
+        (if-changed-call complex-floors set-floor-indicator#io)
+        (if-changed-call complex-calls set-call-lights#io)
+        (if-changed-call complex-commands set-command-lights#io)))))
 
 ;; This algorithm consumes a hash-table of elevators
 ;; and performs side effects with it, returning a new
@@ -33,32 +33,32 @@
     (discuss-good-solution-with-other-elevators-and-execute (hash id (make-empty-elevator id name)))
     (begin
       ; (trce (lens-view this:servicing elevators))
-      (broadcast (lens-view this:state elevators))
+      (broadcast#io (lens-view this:state elevators))
       (sleep iteration-sleep-time)
       (let ([current-open (lens-view this:opening elevators)])
         (if (positive? current-open)
           (begin
             (cond
-              ([= current-open door-open-iterations] (elevator-hardware:open-door))
-              ([= current-open 1] (elevator-hardware:close-door)))
+              ([= current-open door-open-iterations] (elevator-hardware:open-door#io))
+              ([= current-open 1] (elevator-hardware:close-door#io)))
             (lens-transform this:opening elevators sub1))
-          (let ([elevators* (insert-button-presses-into-this-elevator-as-requests (pop-button-states) elevators)])
+          (let ([elevators* (insert-button-presses-into-this-elevator-as-requests (pop-button-states#io) elevators)])
             (~>
-              (receive)
+              (receive#io)
               filter-newest-to-hash
               (unify-messages-and-elevators elevators*)
               (insert-self-into-elevators elevators*)
               remove-all-dead-elevators
               decrement-all-time-to-live
               ; trce* ; You can add a trce* anywhere inside a ~> to print the state
-              update-position!
+              update-position#io
               unify-requests
               prune-call-requests-that-are-done
               assign-call-requests
-              store-commands!
+              store-commands#io
               service-commands
               sort-servicing
-              set-motor-direction-to-task!
+              set-motor-direction-to-task#io
               prune-done-requests
               prune-servicing-requests
               detect-and-remove-floor-cycle

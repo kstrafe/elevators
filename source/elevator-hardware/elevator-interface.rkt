@@ -9,8 +9,8 @@
 ;; Controls whether the hardware should look for a real or simulated elevator
 (define simulated #t)
 
-(define (open-door)  (set-door-open-lamp 1))
-(define (close-door) (set-door-open-lamp 0))
+(define (open-door#io)  (set-door-open-lamp#io 1))
+(define (close-door#io) (set-door-open-lamp#io 0))
 
 ;; Load the elevator hardware library
 (define-runtime-path library "libelevator-hardware")
@@ -38,7 +38,7 @@
          [name              (second list-of-arguments)]
          [signature         (third list-of-arguments)]
          [out
-    `(define ,(format-symbol "~a" name)
+    `(define ,(format-symbol "~a#io" name)
       (get-ffi-obj ,(string-append "elev_" (string-replace (symbol->string name) "-" "_"))
         driver ,signature
         (lambda () (error 'ffi-error ,(format "Unable to link to symbol ~a" (symbol->string name))))))])
@@ -62,6 +62,4 @@
   (get-stop-signal (_fun -> _int))
   (get-obstruction-signal (_fun -> _int)))
 
-(if simulated
-  (init 'ET_Simulation)
-  (init 'ET_Comedi))
+(init#io (if simulated 'ET_Simulation 'ET_Comedi))

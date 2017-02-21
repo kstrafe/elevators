@@ -1,11 +1,11 @@
 #lang racket
 
-(provide pop-button-states set-call-lights set-command-lights set-floor-indicator)
+(provide pop-button-states#io set-call-lights#io set-command-lights#io set-floor-indicator#io)
 
 (require lens racket/async-channel "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "logger.rkt")
 
 ;; Get all button presses. Remove duplicates. Add timestamps.
-(define (pop-button-states)
+(define (pop-button-states#io)
   (map (curry set-command-timestamp (current-inexact-milliseconds))
     (remove-duplicates
       (let loop ()
@@ -14,20 +14,20 @@
             (cons (buttonify button) (loop))
             empty))))))
 
-(define (set-floor-indicator floor)
-  (elevator-hardware:set-floor-indicator floor))
+(define (set-floor-indicator#io floor)
+  (elevator-hardware:set-floor-indicator#io floor))
 
-(define (set-call-lights calls)
+(define (set-call-lights#io calls)
   (let* ([calls-up    (map request-floor (filter (lambda (x) (symbol=? (request-direction x) 'up)) calls))]
          [calls-down  (map request-floor (filter (lambda (x) (symbol=? (request-direction x) 'down)) calls))])
     (for ([floor (range floor-count)])
-      (elevator-hardware:set-button-lamp 'BUTTON_CALL_DOWN floor (if (ormap (curry = floor) calls-down) 1 0))
-      (elevator-hardware:set-button-lamp 'BUTTON_CALL_UP   floor (if (ormap (curry = floor) calls-up) 1 0)))))
+      (elevator-hardware:set-button-lamp#io 'BUTTON_CALL_DOWN floor (if (ormap (curry = floor) calls-down) 1 0))
+      (elevator-hardware:set-button-lamp#io 'BUTTON_CALL_UP   floor (if (ormap (curry = floor) calls-up) 1 0)))))
 
-(define (set-command-lights commands)
+(define (set-command-lights#io commands)
   (let* ([commands* (map request-floor commands)])
     (for ([floor (range floor-count)])
-      (elevator-hardware:set-button-lamp 'BUTTON_COMMAND   floor (if (ormap (curry = floor) commands*) 1 0)))))
+      (elevator-hardware:set-button-lamp#io 'BUTTON_COMMAND   floor (if (ormap (curry = floor) commands*) 1 0)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -47,14 +47,14 @@
     [_ type]))
 
 ;; Set a button's light on and inform main about this button
-(define (set-and-send type state floor)
+(define (set-and-send#io type state floor)
   (when (= state 1)
-    (elevator-hardware:set-button-lamp type floor state)
+    (elevator-hardware:set-button-lamp#io type floor state)
     (async-channel-put button-channel (list type floor))))
 
 ;; Find out which buttons are currently pressed and not
-(define (poll-direction-buttons type)
-  (for/list ([i floor-count]) (elevator-hardware:get-button-signal type i)))
+(define (poll-direction-buttons#io type)
+  (for/list ([i floor-count]) (elevator-hardware:get-button-signal#io type i)))
 
 ;; Sends button presses to the main thread by polling the button states
 ;; It only sends pressed buttons to main
@@ -62,7 +62,7 @@
 (define poll-buttons (thread (lambda ()
   (let loop ()
     (sleep 0.05)
-    (let-values ([(up down command) (apply values (map poll-direction-buttons elevator-hardware:button-list))])
+    (let-values ([(up down command) (apply values (map poll-direction-buttons#io elevator-hardware:button-list))])
       (for ([up* up] [down* down] [command* command] [floor floor-count])
-        (map (curryr set-and-send floor) elevator-hardware:button-list (list up* down* command*)))
+        (map (curryr set-and-send#io floor) elevator-hardware:button-list (list up* down* command*)))
       (loop))))))

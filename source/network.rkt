@@ -1,6 +1,6 @@
 #lang racket
 
-(provide broadcast receive)
+(provide broadcast#io receive#io)
 
 (require racket/async-channel racket/fasl sha "logger.rkt")
 
@@ -11,7 +11,7 @@
 ;; The hash is checked by the receiver.
 ;; The message is broadcast continuously by a thread. It runs
 ;; at a speed defined by broadcast-sleep.
-(define (broadcast info)
+(define (broadcast#io info)
   (let ([message (list info (current-inexact-milliseconds))])
     (async-channel-put broadcast-channel (list message (hashify message)))))
 
@@ -22,7 +22,7 @@
 ;; If the hash is OK, then ('m' timestamp) is accepted
 ;; and put into a list of (('m1' timestamp1) ('m2' timestamp2) ...).
 ;; This list is returned.
-(define (receive)
+(define (receive#io)
   (define max-messages-per-receive 500)
   (define (subreceive have-received)
     (if (> have-received max-messages-per-receive)
@@ -30,7 +30,7 @@
       (let ([input-buffer (make-bytes 65535)])
         (let-values ([(message-length source-host source-port) (udp-receive!* udp-channel input-buffer)])
           (if message-length
-            (with-handlers ([exn? (lambda (e) (receive))])
+            (with-handlers ([exn? (lambda (e) (receive#io))])
               (let ([message (fasl->s-exp input-buffer)])
                 (if (hash-check message)
                   (cons (first message) (subreceive (add1 have-received)))

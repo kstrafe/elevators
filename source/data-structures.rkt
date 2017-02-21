@@ -23,7 +23,7 @@
 (define (call-request? request) (not (symbol=? (request-direction request) 'command)))
 
 ;; Load/generate an identity
-(define-values (id name) (generate-or-load-identity))
+(define-values (id name) (generate-or-load-identity#io))
 (info id name)
 
 (define this:state     (lens-compose attributes-state-lens (hash-ref-lens id)))
