@@ -10,7 +10,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Read commands from file
-(define (read-commands)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; IMPURE : This procedure is impure as it reads from a file ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (read-commands!)
   (with-handlers ([exn? (lambda (e) (displayln e) empty)])
     (let ([filepath "commands"]) (if (file-exists? filepath) (file->value filepath) empty))))
 
@@ -66,7 +69,7 @@
 
 ;; Create a new empty elevator
 (define (make-empty-elevator id name)
-  (attributes (state id name 0 empty empty (read-commands) empty 0) time-to-live (current-inexact-milliseconds)))
+  (attributes (state id name 0 empty empty (read-commands!) empty 0) time-to-live (current-inexact-milliseconds)))
 
 ;; Calculate which call requests are available to pick
 ;;
