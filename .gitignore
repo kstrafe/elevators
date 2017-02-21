@@ -6,10 +6,10 @@
 [._]s[a-w][a-z]
 
 # Project:
-identity
-commands
+temporaries/identity
+temporaries/commands
 
-elev.o
-io.o
-cloc
-libelevator-hardware.so*
+source/elevator-hardware/elev.o
+source/elevator-hardware/io.o
+source/elevator-hardware/cloc
+source/elevator-hardware/libelevator-hardware.so*
