@@ -38,35 +38,7 @@
 ;; hash-table of elevators.
 (define (discuss-good-solution-with-other-elevators-and-execute elevators)
   (if (or (empty? elevators) (not (hash-has-key? elevators id)))
-    (discuss-good-solution-with-other-elevators-and-execute
-      ; (hash id (make-empty-elevator id name))
-#hash(("15e80f40-1e27-4c50-bbbe-da2f3cabd55b"
-       .
-       #s(attributes
-          #s(state
-             "15e80f40-1e27-4c50-bbbe-da2f3cabd55b"
-             "Gothmog Tempus"
-             5
-             (#s(request up 7 1487525345355.524) ; 4. Newest
-              #s(request up 6 1487525339755.581) ; 2.
-              #s(request up 5 1487525339755.581) ; 2.
-              #s(request command 3 1487525336224.932) ; 1. Oldest
-              #s(request command 0 1487525341443.528)) ; 3.
-             (#s(request up 5 1487525339755.581)
-              #s(request up 6 1487525339755.581)
-              #s(request up 7 1487525345355.524))
-             (#s(request command 0 1487525341443.528)
-              #s(request command 3 1487525336224.932))
-             (#s(request down 4 1487525284307.257)
-              #s(request down 2 1487525287041.592)
-              #s(request down 1 1487525305713.596)
-              #s(request down 2 1487525305713.596)
-              #s(request up 3 1487525316618.176)
-              #s(request up 4 1487525334334.577))
-             0)
-          59.0
-          1487525627566.098)))
-      )
+    (discuss-good-solution-with-other-elevators-and-execute (hash id (make-empty-elevator id name)))
     (begin
       ; (trce (lens-view this:servicing elevators))
       (broadcast (lens-view this:state elevators))
@@ -86,7 +58,7 @@
               (insert-self-into-elevators elevators*)
               remove-all-dead-elevators
               decrement-all-time-to-live
-              trce* ; You can add a trce* anywhere inside a ~> to print the state
+              ; trce* ; You can add a trce* anywhere inside a ~> to print the state
               update-position!
               unify-requests
               prune-call-requests-that-are-done
