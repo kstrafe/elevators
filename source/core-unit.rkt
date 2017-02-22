@@ -21,8 +21,10 @@
         (lens-transform cel _ (lambda (elevators)
           (~>
             elevators
+            (insert-button-presses-into-this-elevator-as-requests (pop-button-states#io) _)
             update-position#io
             store-commands#io
+            trce*
             set-motor-direction-to-task#io)))
         (lt complex-floors-lens   _ (lambda (floors)  (list (lens-view (lens-compose this:position  cel) complex*) (first floors))))
         (lt complex-calls-lens    _ (lambda (buttons) (list (lens-view (lens-compose this:call      cel) complex*) (first buttons))))
@@ -48,21 +50,20 @@
               ([= current-open door-open-iterations] (elevator-hardware:open-door#io))
               ([= current-open 1] (elevator-hardware:close-door#io)))
             (lens-transform this:opening elevators sub1))
-          (let ([elevators* (insert-button-presses-into-this-elevator-as-requests (pop-button-states#io) elevators)])
-            (~>
-              (receive#io)
-              filter-newest-to-hash
-              (unify-messages-and-elevators elevators*)
-              (insert-self-into-elevators elevators*)
-              remove-all-dead-elevators
-              decrement-all-time-to-live
-              ; trce* ; You can add a trce* anywhere inside a ~> to print the state
-              unify-requests
-              prune-call-requests-that-are-done
-              assign-call-requests
-              service-commands
-              sort-servicing
-              prune-done-requests
-              prune-servicing-requests
-              detect-and-remove-floor-cycle
-              check-for-fatal-situations)))))))
+          (~>
+            (receive#io)
+            filter-newest-to-hash
+            (unify-messages-and-elevators elevators)
+            (insert-self-into-elevators elevators)
+            remove-all-dead-elevators
+            decrement-all-time-to-live
+            ; trce* ; You can add a trce* anywhere inside a ~> to print the state
+            unify-requests
+            prune-call-requests-that-are-done
+            assign-call-requests
+            service-commands
+            sort-servicing
+            prune-done-requests
+            prune-servicing-requests
+            detect-and-remove-floor-cycle
+            check-for-fatal-situations))))))
