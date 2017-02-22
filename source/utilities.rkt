@@ -101,21 +101,21 @@
 
 ;; Compute a state's current direction of travel based on its
 ;; position and currently servicing requests
-(define (compute-direction-of-travel state)
-  (compute-direction-to-travel state (state-servicing-requests state)))
+(define (compute-direction-of-travel state call?)
+  (compute-direction-to-travel state (state-servicing-requests state) call?))
 
 ;; Compute the direction to travel from a state to a list of requests
-(define (compute-direction-to-travel state requests)
+(define (compute-direction-to-travel state requests call?)
   (if (empty? requests)
     'halt
     (let ([position (state-position state)]
           [request  (first requests)])
       (cond
-        ([< position (request-floor request)]         'up)
-        ([> position (request-floor request)]         'down)
-        ([symbol=? (request-direction request) 'up]   'up)
-        ([symbol=? (request-direction request) 'down] 'down)
-        (else      (compute-direction-to-travel state (rest requests)))))))
+        ([< position (request-floor request)]                     'up)
+        ([> position (request-floor request)]                     'down)
+        ([and call? (symbol=? (request-direction request) 'up)]   'up)
+        ([and call? (symbol=? (request-direction request) 'down)] 'down)
+        (else       (compute-direction-to-travel state (rest requests) call?))))))
 
 ;; Compute an elevator's score
 ;; Computes the distance from an elevator to a request
@@ -152,8 +152,8 @@
           (map (lambda (elevator)
             (list
               elevator
-              (compute-direction-of-travel  elevator)
-              (compute-direction-to-travel  elevator (list top-request))
+              (compute-direction-of-travel  elevator #t)
+              (compute-direction-to-travel  elevator (list top-request) #t)
               (request-direction            top-request)
               (elevator-request-direction   elevator)
               (state-position               elevator)
@@ -167,7 +167,7 @@
                   (_ #t))
                 (symbol=? (second elev-info) (third  elev-info))
                 (symbol=? (second elev-info) (fourth elev-info))
-                (or (symbol=? (fourth elev-info) (fifth elev-info))))
+                (or (symbol=? (fourth elev-info) (fifth elev-info)) (symbol=? (fifth elev-info) 'halt)))
               (symbol=? (second elev-info) 'halt))) _)
           (map first _)
           (map (lambda (elevator) (list (state-id elevator) (score-elevator-request elevator top-request))) _)
@@ -297,10 +297,10 @@
 ;; and the current heading. We can find out which commands to process. These commands
 ;; are prepended to the servicing requests list and later sorted by another function.
 (define (service-commands elevators)
-  (let* ([position (lens-view this:position elevators)]
-         [servicing (lens-view this:servicing elevators)]
-         [commands (lens-view this:command elevators)]
-         [direction (compute-direction-of-travel (lens-view this:state elevators))])
+  (let* ([position   (lens-view this:position elevators)]
+         [servicing  (lens-view this:servicing elevators)]
+         [commands   (lens-view this:command elevators)]
+         [direction  (compute-direction-of-travel (lens-view this:state elevators) #f)])
       (let loop
           ([eligible
             (remove* servicing
@@ -322,7 +322,7 @@
 ;; requests in such a way that sorting the requests will not
 ;; make the elevator turn around (cause a floor cycle).
 (define (sort-servicing elevators)
-  (let ([direction (compute-direction-of-travel (lens-view this:state elevators))])
+  (let ([direction (compute-direction-of-travel (lens-view this:state elevators) #f)])
     (lens-transform this:servicing elevators
       (lambda (x)
         (if (symbol=? direction 'halt)
@@ -384,6 +384,8 @@
 ;; However, if it ever comes to that, that a cycle is detected, we clean
 ;; the servicing request list by removing all requests from it whilst
 ;; logging a critical message.
+;;
+;; Previous cycle bugs: L-RZU (8, wait, up 4, cmd 0, up 6)
 (define (detect-and-remove-floor-cycle elevators)
   (let ([position (list (lens-view this:position elevators))])
     (lens-transform this:servicing elevators
