@@ -2,10 +2,10 @@
 
 (require racket/bool racket/fasl racket/file racket/function racket/hash racket/list racket/match racket/pretty racket/syntax
   lens rackunit rackunit/text-ui threading
-  "invoker-sig.rkt" "utilities-sig.rkt" "data-structures.rkt" "motor.rkt" "logger.rkt"
+  "identity-generator-sig.rkt" "utilities-sig.rkt" "data-structures.rkt" "motor.rkt" "logger.rkt"
   (for-syntax racket/syntax))
 
-(import invoker^)
+(import identity-generator^)
 (export utilities^)
 
 (info "Utilities started")

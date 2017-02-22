@@ -1,11 +1,11 @@
 #lang racket/unit
 
 (require lens racket/list threading
-  "invoker-sig.rkt" "core-sig.rkt" "utilities-sig.rkt"
+  "core-sig.rkt" "identity-generator-sig.rkt" "utilities-sig.rkt"
   "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt"
   "logger.rkt" "motor.rkt" "network.rkt" "control-panel.rkt")
 
-(import invoker^ utilities^)
+(import identity-generator^ utilities^)
 (export core^)
 
 (info "Core started")
