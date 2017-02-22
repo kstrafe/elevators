@@ -1,10 +1,11 @@
-#lang racket
+#lang racket/unit
 
-(provide core)
+(require lens racket/list threading
+  "core-sig.rkt" "identity-generator-sig.rkt" "utilities-sig.rkt"
+  "control-panel.rkt" "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "logger.rkt" "motor.rkt" "network.rkt")
 
-(require lens threading
-  "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt"
-  "logger.rkt" "motor.rkt" "network.rkt" "control-panel.rkt" "utilities.rkt")
+(import identity-generator^ utilities^)
+(export core^)
 
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)

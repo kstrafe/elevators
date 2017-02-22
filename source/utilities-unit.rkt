@@ -1,9 +1,24 @@
-#lang racket
+#lang racket/unit
 
-(provide (all-defined-out))
+(require racket/bool racket/fasl racket/file racket/function racket/hash racket/list racket/match racket/pretty racket/syntax
+  lens rackunit rackunit/text-ui threading
+  "identity-generator-sig.rkt" "utilities-sig.rkt"
+  "data-structures.rkt" "logger.rkt" "motor.rkt"
+  (for-syntax racket/syntax))
 
-(require lens racket/fasl racket/hash racket/pretty racket/syntax rackunit rackunit/text-ui threading
-  "data-structures.rkt" "motor.rkt" "logger.rkt" (for-syntax racket/syntax))
+(import identity-generator^)
+(export utilities^)
+
+;; this: and other: structures
+(define this:state     (lens-compose attributes-state-lens (hash-ref-lens id)))
+(define this:opening   (lens-compose state-opening-time-lens attributes-state-lens (hash-ref-lens id)))
+(define this:command   (lens-compose state-command-requests-lens this:state))
+(define this:call      (lens-compose state-call-requests-lens this:state))
+(define this:position  (lens-compose state-position-lens this:state))
+(define this:done      (lens-compose state-done-requests-lens this:state))
+(define this:servicing (lens-compose state-servicing-requests-lens this:state))
+
+(define (other:servicing id) (lens-compose (lens-compose state-servicing-requests-lens attributes-state-lens (hash-ref-lens id))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Common tools
