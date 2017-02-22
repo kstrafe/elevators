@@ -1,6 +1,6 @@
-# Elevators
+# Moloch Asmodeus Rex - A functional approach to semi-optimal distributed elevator control
 
-Elevator project written for the course `TTK4145` (Real-time Programming) at Norwegian University of Science and Technology (NTNU).
+Elevator control software project written for the course `TTK4145` (Real-time Programming) at Norwegian University of Science and Technology (NTNU).
 
 ## Description
 
