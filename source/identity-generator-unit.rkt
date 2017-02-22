@@ -1,13 +1,9 @@
 #lang racket/unit
 
-(require libuuid racket/file racket/string
-  "identity-generator-sig.rkt"
-  "logger.rkt")
+(require libuuid racket/file racket/string "identity-generator-sig.rkt")
 
 (import)
 (export identity-generator^)
-
-(info "Identity Generator started")
 
 (define names (file->value "resources/names"))
 
@@ -34,4 +30,3 @@
 
 ;; Load/generate an identity
 (define-values (id name) (generate-or-load-identity#io))
-(info id name)

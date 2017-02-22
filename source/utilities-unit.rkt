@@ -2,13 +2,12 @@
 
 (require racket/bool racket/fasl racket/file racket/function racket/hash racket/list racket/match racket/pretty racket/syntax
   lens rackunit rackunit/text-ui threading
-  "identity-generator-sig.rkt" "utilities-sig.rkt" "data-structures.rkt" "motor.rkt" "logger.rkt"
+  "identity-generator-sig.rkt" "utilities-sig.rkt"
+  "data-structures.rkt" "logger.rkt" "motor.rkt"
   (for-syntax racket/syntax))
 
 (import identity-generator^)
 (export utilities^)
-
-(info "Utilities started")
 
 ;; this: and other: structures
 (define this:state     (lens-compose attributes-state-lens (hash-ref-lens id)))

@@ -2,15 +2,12 @@
 
 (provide invoker)
 
-(require "core-unit.rkt" "identity-generator-unit.rkt" "utilities-unit.rkt"
-   "logger.rkt")
-
-;; Invoke units
-(define-values/invoke-unit/infer identity-generator@)
-(define-values/invoke-unit/infer utilities@)
-(define-values/invoke-unit/infer core@)
+(require "core-unit.rkt" "identity-generator-unit.rkt" "utilities-unit.rkt" "logger.rkt")
 
 ;; Propagate invocation of the main function to core unit
 (define (invoker complex-struct)
-  ;; TODO Consider moving invoking here
+  ;; Invoke units
+  (define-values/invoke-unit/infer identity-generator@)
+  (define-values/invoke-unit/infer utilities@)
+  (define-values/invoke-unit/infer core@)
   (core complex-struct))

@@ -2,7 +2,7 @@
 
 (provide (all-defined-out))
 
-(require lens "identity-generator.rkt" "logger.rkt")
+(require lens "logger.rkt")
 
 (define max-done-length       30)
 (define floor-count           9)
