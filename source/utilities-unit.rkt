@@ -137,7 +137,7 @@
   (let ([requests (state-servicing-requests state)])
     (if (and (not (empty? requests)) (command-request? (last requests)))
       (request-floor (last requests))
-      -1)))
+      #f)))
 
 ;; Compute an elevator's score
 ;; Computes the distance from an elevator to a request
@@ -190,10 +190,10 @@
                   (_ #t))
                 (symbol=? (second elev-info) (third  elev-info))
                 (symbol=? (second elev-info) (fourth elev-info))
-                (= (eighth elev-info) -1)
+                (not (creates-cycle? (first elev-info) (seventh elev-info)))
                 (or (symbol=? (fourth elev-info) (fifth elev-info)) (symbol=? (fifth elev-info) 'halt)))
               (symbol=? (second elev-info) 'halt)
-              (= (eighth elev-info) (seventh elev-info)))) _)
+              (equal? (eighth elev-info) (seventh elev-info)))) _)
           (map first _)
           (map (lambda (elevator) (list (state-id elevator) (score-elevator-request elevator top-request))) _)
           (sort string<? #:key first)
@@ -423,6 +423,12 @@
                 (crit "Servicing has a floor cycle, emptying servicing" servicing)
                 empty)))
           servicing)))))
+
+(define (creates-cycle? elevator new-floor)
+  (let* ([position (list (state-position elevator))]
+         [servicing (append (list new-floor) (map request-floor (state-servicing-requests elevator)))]
+         [servicing* (sort servicing <)])
+    (not (or (apply <= (append position servicing*)) (apply <= (append servicing* position))))))
 
 ;; Check that position is within allowed limits.
 ;; This includes checking that position is not below zero,
