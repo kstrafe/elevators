@@ -10,11 +10,11 @@
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)
 
-(define (core complex-struct)
+(define (core#io complex-struct)
   ; (trce complex-struct)
   (if (not (complex? complex-struct))
     (complex (list 0 0) (list empty empty) (list empty empty) empty)
-    (let ([complex* (lens-transform complex-elevators-lens complex-struct discuss-good-solution-with-other-elevators-and-execute)]
+    (let ([complex* (lens-transform complex-elevators-lens complex-struct discuss-good-solution-with-other-elevators-and-execute#io)]
           [cel complex-elevators-lens] [lt lens-transform])
       (~>
         complex*
@@ -35,9 +35,9 @@
 ;; This algorithm consumes a hash-table of elevators
 ;; and performs side effects with it, returning a new
 ;; hash-table of elevators.
-(define (discuss-good-solution-with-other-elevators-and-execute elevators)
+(define (discuss-good-solution-with-other-elevators-and-execute#io elevators)
   (if (or (empty? elevators) (not (hash-has-key? elevators id)))
-    (discuss-good-solution-with-other-elevators-and-execute (hash id (make-empty-elevator id name)))
+    (discuss-good-solution-with-other-elevators-and-execute#io (hash id (make-empty-elevator#io id name)))
     (begin
       ; (trce (lens-view this:servicing elevators))
       (broadcast#io (lens-view this:state elevators))

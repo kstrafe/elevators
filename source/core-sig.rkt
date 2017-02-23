@@ -1,3 +1,3 @@
 #lang racket/signature
 
-core ; (struct -> struct)
+core#io ; (struct -> struct)

@@ -94,7 +94,7 @@
 (define call-of-hash (lens-compose state-call-requests-lens attributes-state-lens))
 
 ;; Create a new empty elevator
-(define (make-empty-elevator id name)
+(define (make-empty-elevator#io id name)
   (attributes (state id name 0 empty empty (read-commands#io) empty 0) time-to-live (current-inexact-milliseconds)))
 
 ;; Calculate which call requests are available to pick

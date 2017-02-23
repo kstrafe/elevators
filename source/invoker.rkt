@@ -11,4 +11,4 @@
 ;; Propagate invocation of the main function to core unit
 (define (invoker complex-struct)
   ;; Invoke units
-  (core complex-struct))
+  (core#io complex-struct))

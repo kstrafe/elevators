@@ -18,7 +18,8 @@
 ;; Create a reloadable entry point
 (reloadable invoker)
 
+(reload!)
+
 ;; Main loop of the program
 (let loop ([state empty])
-  (reload!)
   (loop (invoker state)))
