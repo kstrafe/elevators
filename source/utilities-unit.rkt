@@ -190,6 +190,7 @@
                   (_ #t))
                 (symbol=? (second elev-info) (third  elev-info))
                 (symbol=? (second elev-info) (fourth elev-info))
+                (= (eighth elev-info) -1)
                 (or (symbol=? (fourth elev-info) (fifth elev-info)) (symbol=? (fifth elev-info) 'halt)))
               (symbol=? (second elev-info) 'halt)
               (= (eighth elev-info) (seventh elev-info)))) _)
