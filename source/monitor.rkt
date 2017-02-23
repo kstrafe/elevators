@@ -2,7 +2,10 @@
 
 (require "logger.rkt")
 
+;; Open up the fifo pipe
+(define monitor-fifo-in (open-input-file "/tmp/monitor-fifo"))
+
+;; TODO Bug remains where this blocks the other process
 (let loop ()
-  ; (with-input-from-file "monitor-fifo"
-  ;   (dbug* (read)))
+  (dbug* (read monitor-fifo-in))
   (loop))
