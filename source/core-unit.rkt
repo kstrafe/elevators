@@ -51,6 +51,7 @@
             (lens-transform this:opening elevators sub1))
           (~>
             (receive#io)
+            (filter (lambda~> first state?) _)
             filter-newest-to-hash
             (unify-messages-and-elevators elevators)
             (insert-self-into-elevators elevators)
