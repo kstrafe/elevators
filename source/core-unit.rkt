@@ -18,13 +18,11 @@
           [cel complex-elevators-lens] [lt lens-transform])
       (~>
         complex*
-        (lens-transform cel _ (lambda (elevators)
-          (~>
-            elevators
-            (insert-button-presses-into-this-elevator-as-requests (pop-button-states#io) _)
-            update-position#io
-            store-commands#io
-            set-motor-direction-to-task#io)))
+        (lens-transform cel _ (lambda~>
+          (insert-button-presses-into-this-elevator-as-requests (pop-button-states#io) _)
+          update-position#io
+          store-commands#io
+          set-motor-direction-to-task#io))
         (lt complex-floors-lens   _ (lambda (floors)  (list (lens-view (lens-compose this:position  cel) complex*) (first floors))))
         (lt complex-calls-lens    _ (lambda (buttons) (list (lens-view (lens-compose this:call      cel) complex*) (first buttons))))
         (lt complex-commands-lens _ (lambda (buttons) (list (lens-view (lens-compose this:command   cel) complex*) (first buttons))))
