@@ -132,6 +132,13 @@
         ([and call? (symbol=? (request-direction request) 'down)] 'down)
         (else       (compute-direction-to-travel state (rest requests) call?))))))
 
+;; When the final servicing is a command, get its floor, else return -1
+(define (final-command-floor state)
+  (let ([requests (state-servicing-requests state)])
+    (if (and (not (empty? requests)) (command-request? (last requests)))
+      (request-floor (last requests))
+      -1)))
+
 ;; Compute an elevator's score
 ;; Computes the distance from an elevator to a request
 (define (score-elevator-request state request)
@@ -172,7 +179,8 @@
               (request-direction            top-request)
               (elevator-request-direction   elevator)
               (state-position               elevator)
-              (request-floor                top-request))) _)
+              (request-floor                top-request)
+              (final-command-floor          elevator))) _)
           (filter (lambda (elev-info)
             (or
               (and
@@ -183,7 +191,8 @@
                 (symbol=? (second elev-info) (third  elev-info))
                 (symbol=? (second elev-info) (fourth elev-info))
                 (or (symbol=? (fourth elev-info) (fifth elev-info)) (symbol=? (fifth elev-info) 'halt)))
-              (symbol=? (second elev-info) 'halt))) _)
+              (symbol=? (second elev-info) 'halt)
+              (= (eighth elev-info) (seventh elev-info)))) _)
           (map first _)
           (map (lambda (elevator) (list (state-id elevator) (score-elevator-request elevator top-request))) _)
           (sort string<? #:key first)

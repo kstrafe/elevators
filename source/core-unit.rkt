@@ -24,7 +24,6 @@
             (insert-button-presses-into-this-elevator-as-requests (pop-button-states#io) _)
             update-position#io
             store-commands#io
-            trce*
             set-motor-direction-to-task#io)))
         (lt complex-floors-lens   _ (lambda (floors)  (list (lens-view (lens-compose this:position  cel) complex*) (first floors))))
         (lt complex-calls-lens    _ (lambda (buttons) (list (lens-view (lens-compose this:call      cel) complex*) (first buttons))))
