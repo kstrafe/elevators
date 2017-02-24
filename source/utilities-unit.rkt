@@ -32,16 +32,27 @@
       (procedure (first elems))))
   complex)
 
+;; Read backup commands from fifo
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; IMPURE : This procedure is impure as it reads from a fifo ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (read-backup-commands#io)
+  (when (file-exists? "temporaries/commands-backup-fifo")
+    (let ([backup-commands (read (open-input-file "temporaries/commands-backup-fifo"))])
+      (if (eof-object? backup-commands)
+        empty
+        backup-commands))))
+
 ;; Read commands from file
+;; If no file is found or is corrupted, try to read from a backup fifo
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMPURE : This procedure is impure as it reads from a file ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (read-commands#io)
-  (with-handlers ([exn? (lambda (error) (warn error) empty)])
+  (with-handlers ([exn? (lambda (error) (warn error))])
     (let* ([filepath "temporaries/commands"]
-           [result (if (file-exists? filepath) (file->value filepath) empty)])
-      (if (eof-object? result) empty result))))
-
+           [result (if (file-exists? filepath) (file->value filepath) (read-backup-commands#io))])
+      (if (eof-object? result) (read-backup-commands#io) result))))
 
 ;; Get the first of a list or return empty
 (define (first-or-empty list) (if (empty? list) empty (first list)))
