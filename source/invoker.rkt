@@ -23,9 +23,9 @@
   (define-values/invoke-unit/infer core@)
 
   (when (and (not (empty? complex-struct)) (not (empty? (complex-elevators complex-struct))))
-    ; (dbug (first (complex-commands complex-struct)))
-    ; (dbug complex-struct)
-    (write (lens-view (lens-compose this:command complex-elevators-lens) complex-struct) monitor-fifo-out))
+    (let ([message (lens-view (lens-compose this:command complex-elevators-lens) complex-struct)])
+      (dbug message)
+      (write message monitor-fifo-out)))
 
   (flush-output monitor-fifo-out)
 
