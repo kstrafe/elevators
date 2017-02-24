@@ -15,7 +15,7 @@
   (if (not (complex? complex-struct))
     (complex (list 0 0) (list empty empty) (list empty empty) empty)
     (let ([complex* (lens-transform complex-elevators-lens complex-struct discuss-good-solution-with-other-elevators-and-execute#io)]
-          [cel complex-elevators-lens] [lt lens-transform])
+          [cel complex-elevators-lens])
       (~>
         complex*
         (lens-transform cel _ (lambda~>
@@ -23,12 +23,17 @@
           update-position#io
           store-commands#io
           set-motor-direction-to-task#io))
-        (lt complex-floors-lens   _ (lambda (floors)  (list (lens-view (lens-compose this:position  cel) complex*) (first floors))))
-        (lt complex-calls-lens    _ (lambda (buttons) (list (lens-view (lens-compose this:call      cel) complex*) (first buttons))))
-        (lt complex-commands-lens _ (lambda (buttons) (list (lens-view (lens-compose this:command   cel) complex*) (first buttons))))
+        move-complex-windows
         (if-changed-call complex-floors set-floor-indicator#io)
         (if-changed-call complex-calls set-call-lights#io)
         (if-changed-call complex-commands set-command-lights#io)))))
+
+(define (move-complex-windows complex*)
+  (let ([cel complex-elevators-lens] [lt lens-transform])
+    (~>
+      (lt complex-floors-lens   complex* (lambda (floors)  (list (lens-view (lens-compose this:position  cel) complex*) (first floors))))
+      (lt complex-calls-lens    _ (lambda (buttons) (list (lens-view (lens-compose this:call      cel) complex*) (first buttons))))
+      (lt complex-commands-lens _ (lambda (buttons) (list (lens-view (lens-compose this:command   cel) complex*) (first buttons)))))))
 
 ;; This algorithm consumes a hash-table of elevators
 ;; and performs side effects with it, returning a new
