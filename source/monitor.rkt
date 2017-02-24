@@ -3,9 +3,11 @@
 (require "logger.rkt")
 
 ;; Open up the fifo pipe
-(define monitor-fifo-in (open-input-file "/tmp/monitor-fifo"))
+(define monitor-fifo-in
+  (if (file-exists? "temporaries/monitor-fifo")
+    (open-input-file "temporaries/monitor-fifo")
+    (erro "Monitor fifo not found")))
 
-;; TODO Bug remains where this blocks the other process
 (let loop ()
-  (dbug* (read monitor-fifo-in))
+  (read monitor-fifo-in)
   (loop))
