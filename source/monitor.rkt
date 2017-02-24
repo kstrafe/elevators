@@ -8,6 +8,8 @@
     (open-input-file "temporaries/monitor-fifo")
     (erro "Monitor fifo not found")))
 
+;; TODO
 (let loop ()
-  (read monitor-fifo-in)
+  (let ([message (read monitor-fifo-in)])
+    (info message))
   (loop))
