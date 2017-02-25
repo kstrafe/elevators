@@ -1,11 +1,10 @@
-#lang racket/unit
+#lang racket
+
+(provide (rename-out (core#io core)))
 
 (require lens racket/list threading
-  "core-sig.rkt" "identity-generator-sig.rkt" "utilities-sig.rkt"
+  "identity-generator.rkt" "utilities.rkt"
   "control-panel.rkt" "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "logger.rkt" "motor.rkt" "network.rkt")
-
-(import identity-generator^ utilities^)
-(export core^)
 
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)

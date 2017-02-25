@@ -1,9 +1,8 @@
-#lang racket/unit
+#lang racket
 
-(require libuuid racket/file racket/string "identity-generator-sig.rkt")
+(provide id name)
 
-(import)
-(export identity-generator^)
+(require libuuid racket/file racket/string)
 
 (define names (file->value "resources/names"))
 
