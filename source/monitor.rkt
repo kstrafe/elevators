@@ -5,12 +5,13 @@
   (when (file-exists? "temporaries/monitor-fifo")
     (open-input-file "temporaries/monitor-fifo")))
 
-;; Create a backup fifo to send message and start an new main
+;; Start a new main with backup commands as command line arguments
 (define (respawn-elevator message)
-  (when (not (file-exists? "temporaries/commands-backup-fifo"))
-    (system* "/usr/bin/env" "mkfifo" "temporaries/commands-backup-fifo"))
-  (write message (open-output-file "temporaries/commands-backup-fifo" #:exists 'replace))
-  (subprocess (open-output-file "temporaries/respawned-main-output" #:exists 'append) #f 'stdout "/usr/bin/env" "bash" "-c" "racket main.rkt"))
+  (let ([filepath "temporaries/respawned-main-output"])
+    (when (file-exists? filepath)
+      (delete-file filepath))
+    (subprocess (open-output-file filepath #:exists 'append) #f 'stdout "/usr/bin/env" "bash" "-c"
+      (string-join (list "racket main.rkt" (string-append "\"" (~a message) "\""))))))
 
 (let loop ([message empty] [time-to-live 2000])
   (let ([message* (read monitor-fifo-in)]

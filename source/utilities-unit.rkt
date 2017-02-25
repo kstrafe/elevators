@@ -32,16 +32,18 @@
       (procedure (first elems))))
   complex)
 
-;; Read backup commands from fifo
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; IMPURE : This procedure is impure as it reads from a fifo ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Read backup commands from current command line arguments
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; IMPURE : This procedure is impure as it reads from command line arguments ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (read-backup-commands#io)
-  (when (file-exists? "temporaries/commands-backup-fifo")
-    (let ([backup-commands (read (open-input-file "temporaries/commands-backup-fifo"))])
-      (if (eof-object? backup-commands)
-        empty
-        backup-commands))))
+  (with-handlers ([exn? (lambda (error) (warn error))])
+    (~>
+      (vector-ref (current-command-line-arguments 0))
+      ;; TODO Read list as datum from string gotten above, on the form "(thing1 thing2)"
+      ))
+  empty
+  )
 
 ;; Read commands from file
 ;; If no file is found or is corrupted, try to read from a backup fifo
