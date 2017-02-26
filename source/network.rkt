@@ -34,7 +34,7 @@
               (let ([message (fasl->s-exp input-buffer)])
                 (if (hash-check message)
                   (cons (first message) (subreceive (add1 have-received)))
-                  (subreceive have-received))))
+                  (subreceive (add1 have-received)))))
             empty)))))
   (subreceive 0))
 
