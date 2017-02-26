@@ -50,10 +50,7 @@
   (delay/thread
     (let retry ()
       (let-values ([(program out in err)
-        ;; TODO Use a more reliable method here
-        ;; Using a subprocess works, but sometimes there are other network
-        ;; entities also serving Bcast, which means that this network module
-        ;; broadcasts to the wrong network.
+        ;; TODO Get the broadcast address in a more direct manner. Not parsing a string from ifconfig or ip.
           (subprocess #f #f #f "/usr/bin/env" "bash" "-c" "ifconfig | grep Bcast | cut -d':' -f 3 | cut -d' ' -f 1")])
         (let ([error (port->string err)])
           (when (non-empty-string? error)
@@ -68,7 +65,7 @@
 
 (define-values (broadcast-port broadcast-sleep) (values 30073 0.04))
 
-;; Check if a message's hash is the same as the has of its data
+;; Check if a message's hash is the same as the hash of its data
 (define (hash-check message) (bytes=? (hashify (first message)) (second message)))
 
 ;; Serialize and then hash a message
