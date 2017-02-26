@@ -40,7 +40,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define broadcast-address
+(define (lines->list port)
+  (let ([ip (read-line port)])
+    (if (eof-object? ip)
+      empty
+      (cons ip (lines->list port)))))
+
+(define broadcast-addresses
   (delay/thread
     (let retry ()
       (let-values ([(program out in err)
@@ -52,8 +58,8 @@
         (let ([error (port->string err)])
           (when (non-empty-string? error)
             (crit "Unable to get broadcast address" error)))
-        (let ([ip (read-line out)])
-          (if (non-empty-string? ip)
+        (let ([ip (lines->list out)])
+          (if (not (empty? ip))
             ip
             (begin
               (warn* "Unable to find broadcast address, retrying in one second")
@@ -79,8 +85,9 @@
       (if new-value
         (loop new-value)
         (begin
-          (when (and to-send (promise-forced? broadcast-address))
+          (when (and to-send (promise-forced? broadcast-addresses))
             (with-handlers ([exn:fail:network? erro*])
-              (udp-send-to udp-channel (force broadcast-address) broadcast-port (s-exp->fasl to-send))))
+              (for ([address (force broadcast-addresses)])
+                (udp-send-to udp-channel address broadcast-port (s-exp->fasl to-send)))))
           (sleep broadcast-sleep)
           (loop to-send))))))))
