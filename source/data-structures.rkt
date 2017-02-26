@@ -14,7 +14,7 @@
   (begin (struct/lens name (attributes ...) #:prefab keywords ...) ...))
 
 (struct/lens-es
-  (complex     (floors calls commands elevators))
+  (complex     (floors calls commands elevators monitor-fifo-out))
   (attributes  (state time-to-live timestamp))
   (state       (id name position servicing-requests call-requests command-requests done-requests opening-time))
   (request     (direction floor timestamp)))
