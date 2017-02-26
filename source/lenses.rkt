@@ -16,5 +16,9 @@
 (define this:position  (lens-compose state-position-lens this:state))
 (define this:done      (lens-compose state-done-requests-lens this:state))
 (define this:servicing (lens-compose state-servicing-requests-lens this:state))
+(define cplx:command   (lens-compose this:command complex-elevators-lens))
 
 (define (other:servicing id) (lens-compose (lens-compose state-servicing-requests-lens attributes-state-lens (hash-ref-lens id))))
+
+(define done-of-hash (lens-compose state-done-requests-lens attributes-state-lens))
+(define call-of-hash (lens-compose state-call-requests-lens attributes-state-lens))

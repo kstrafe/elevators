@@ -42,9 +42,6 @@
     reverse
     (append stored-commands)))
 
-(define done-of-hash (lens-compose state-done-requests-lens attributes-state-lens))
-(define call-of-hash (lens-compose state-call-requests-lens attributes-state-lens))
-
 ;; Calculate which call requests are available to pick
 ;;
 ;; This algorithm checks if a call request is already

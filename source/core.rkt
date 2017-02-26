@@ -29,7 +29,7 @@
           [cel complex-elevators-lens])
       ;; Write to monitor fifo
       (when (not (empty? (complex-elevators complex-struct)))
-        (let ([message (lens-view (lens-compose this:command complex-elevators-lens) complex-struct)])
+        (let ([message (lens-view cplx:command complex-struct)])
           (write message (complex-monitor-fifo-out complex-struct))))
       (flush-output (complex-monitor-fifo-out complex-struct))
 
@@ -45,12 +45,13 @@
         (if-changed-call complex-calls set-call-lights#io)
         (if-changed-call complex-commands set-command-lights#io)))))
 
-(define (move-complex-windows complex*)
-  (let ([cel complex-elevators-lens] [lt lens-transform])
+(define (move-complex-windows complex)
+  (let* ([lt lens-transform] [com (curryr lens-compose complex-elevators-lens)] [get (curryr lens-view complex)])
     (~>
-      (lt complex-floors-lens   complex* (lambda (floors)  (list (lens-view (lens-compose this:position  cel) complex*) (first floors))))
-      (lt complex-calls-lens    _ (lambda (buttons) (list (lens-view (lens-compose this:call      cel) complex*) (first buttons))))
-      (lt complex-commands-lens _ (lambda (buttons) (list (lens-view (lens-compose this:command   cel) complex*) (first buttons)))))))
+      complex
+      (lt complex-floors-lens   _ (lambda (floors)  (list (get (com this:position))  (first floors))))
+      (lt complex-calls-lens    _ (lambda (buttons) (list (get (com this:call))      (first buttons))))
+      (lt complex-commands-lens _ (lambda (buttons) (list (get (com this:command))   (first buttons)))))))
 
 ;; This algorithm consumes a hash-table of elevators
 ;; and performs side effects with it, returning a new
@@ -66,8 +67,8 @@
         (if (positive? current-open)
           (begin
             (cond
-              ([= current-open door-open-iterations] (elevator-hardware:open-door#io))
-              ([= current-open 1] (elevator-hardware:close-door#io)))
+              ([= current-open door-open-iterations]  (elevator-hardware:open-door#io))
+              ([= current-open 1]                     (elevator-hardware:close-door#io)))
             (lens-transform this:opening elevators sub1))
           (~>
             (receive#io)

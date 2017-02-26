@@ -4,9 +4,9 @@
 
 (require racket/async-channel "try-get-last.rkt" "elevator-hardware/elevator-interface.rkt" "logger.rkt")
 
-(define (any-new-floor-reached?#io) (async-channel-try-get-last#io status-channel #f))
+(define (any-new-floor-reached?#io) (async-channel-try-get-last#io  status-channel #f))
 (define (is-blocked?#io)            (async-channel-try-get-last#io  blocked-channel #f))
-(define (move-to-floor#io floor)    (async-channel-put           motor-channel  floor))
+(define (move-to-floor#io floor)    (async-channel-put              motor-channel  floor))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
