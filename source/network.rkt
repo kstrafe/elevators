@@ -2,7 +2,7 @@
 
 (provide broadcast#io receive#io)
 
-(require racket/async-channel racket/fasl sha "logger.rkt")
+(require racket/async-channel racket/fasl sha "try-get-last.rkt" "logger.rkt")
 
 ;; Broadcast a message
 ;;
@@ -40,28 +40,32 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Turn lines into a list of strings
 (define (lines->list port)
   (let ([ip (read-line port)])
     (if (eof-object? ip)
       empty
       (cons ip (lines->list port)))))
 
-(define broadcast-addresses
-  (delay/thread
-    (let retry ()
-      (let-values ([(program out in err)
-        ;; TODO Get the broadcast address in a more direct manner. Not parsing a string from ifconfig or ip.
-          (subprocess #f #f #f "/usr/bin/env" "bash" "-c" "ifconfig | grep Bcast | cut -d':' -f 3 | cut -d' ' -f 1")])
-        (let ([error (port->string err)])
-          (when (non-empty-string? error)
-            (crit "Unable to get broadcast address" error)))
-        (let ([ip (lines->list out)])
-          (if (not (empty? ip))
-            ip
-            (begin
-              (warn* "Unable to find broadcast address, retrying in one second")
-              (sleep 1)
-              (retry))))))))
+;; Continuously write the freshest broadcast addresses to this channel
+;; This allows us to easily continue working even if there are many broadcast addresses
+(define broadcast-addresses-channel (make-async-channel))
+(define broadcast-addresses (thread (lambda () (let retry ()
+  (let-values ([(program out in err)
+    ;; TODO Get the broadcast address in a more direct manner. Not parsing a string from ifconfig or ip.
+      (subprocess #f #f #f "/usr/bin/env" "bash" "-c" "ifconfig | grep Bcast | cut -d':' -f 3 | cut -d' ' -f 1")])
+    (let ([error (port->string err)])
+      (when (non-empty-string? error)
+        (crit "Unable to get broadcast address" error)))
+    (let ([ip (lines->list out)])
+      (if (not (empty? ip))
+        (begin
+          (async-channel-put broadcast-addresses-channel ip)
+          (sleep 5))
+        (begin
+          (warn* "Unable to find broadcast addresses, retrying in one second")
+          (sleep 1)))
+      (retry)))))))
 
 (define-values (broadcast-port broadcast-sleep) (values 30073 0.04))
 
@@ -77,14 +81,12 @@
 
 ;; Continuously broadcasts until a new value is supplied by the broadcast function
 (define broadcast-thread (thread (lambda ()
-  (let loop ([to-send #f])
-    (let ([new-value (async-channel-try-get broadcast-channel)])
-      (if new-value
-        (loop new-value)
-        (begin
-          (when (and to-send (promise-forced? broadcast-addresses))
-            (with-handlers ([exn:fail:network? erro*])
-              (for ([address (force broadcast-addresses)])
-                (udp-send-to udp-channel address broadcast-port (s-exp->fasl to-send)))))
-          (sleep broadcast-sleep)
-          (loop to-send))))))))
+  (let loop ([to-send #f] [addresses #f])
+    (let ([to-send*    (async-channel-try-get-last#io broadcast-channel to-send)]
+          [addresses*  (async-channel-try-get-last#io broadcast-addresses-channel addresses)])
+      (when (and to-send addresses)
+        (with-handlers ([exn:fail:network? erro*])
+          (for ([address addresses*])
+            (udp-send-to udp-channel address broadcast-port (s-exp->fasl to-send*)))))
+      (sleep broadcast-sleep)
+      (loop to-send* addresses*))))))
