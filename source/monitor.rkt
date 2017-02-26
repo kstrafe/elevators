@@ -15,11 +15,8 @@
 (define (respawn-elevator message kill-old-monitor)
   (when kill-old-monitor
     (system* "/usr/bin/env" "pkill" "main.rkt"))
-  (let ([filepath "temporaries/respawned-main-output"])
-    (when (file-exists? filepath)
-      (delete-file filepath))
-    (subprocess (open-output-file filepath #:exists 'append) #f 'stdout "/usr/bin/env" "bash" "-c"
-      (string-join (list "racket main.rkt" (string-append "\"" (~a message) "\""))))))
+  (subprocess (open-output-file "/dev/null" #:exists 'append) #f 'stdout "/usr/bin/env" "bash" "-c"
+    (string-join (list "racket main.rkt" (string-append "\"" (~a message) "\"")))))
 
 ;; Create an async channel to put data from fifo in
 (define fifo-channel (make-async-channel))
