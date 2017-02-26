@@ -58,6 +58,9 @@
       (when (non-empty-string? error)
         (crit "Unable to get broadcast address" error)))
     (let ([ip (lines->list out)])
+      (close-output-port in)
+      (close-input-port out)
+      (close-input-port err)
       (if (not (empty? ip))
         (begin
           (async-channel-put broadcast-addresses-channel ip)
