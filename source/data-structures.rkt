@@ -2,7 +2,7 @@
 
 (provide (all-defined-out))
 
-(require lens "logger.rkt")
+(require lens)
 
 (define max-done-length       30)
 (define floor-count           9)

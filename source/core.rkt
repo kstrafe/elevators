@@ -2,9 +2,9 @@
 
 (provide (rename-out (core#io core)))
 
-(require lens racket/list threading
-  "identity-generator.rkt" "utilities.rkt"
-  "control-panel.rkt" "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "logger.rkt" "motor.rkt" "network.rkt")
+(require lens threading
+  "control-panel.rkt" "data-structures.rkt" "identity-generator.rkt" "lenses.rkt" "elevator-hardware/elevator-interface.rkt"
+  "logger.rkt" "network.rkt" "utilities.rkt" "utilities-io.rkt")
 
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)

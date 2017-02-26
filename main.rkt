@@ -2,7 +2,8 @@
 #lang racket
 
 ;; This project requires the following packages
-;;;; raco pkg install lens libuuid reloadable sha threading
+;; lens libuuid reloadable sha threading
+;; Install using `raco pkg install --skip-installed`
 
 ;; This module sets up a reloadable entry point.
 ;; The reloadable entry point and all its children will
