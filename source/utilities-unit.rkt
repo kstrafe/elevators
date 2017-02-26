@@ -37,13 +37,10 @@
 ;; IMPURE : This procedure is impure as it reads from command line arguments ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (read-backup-commands#io)
-  (with-handlers ([exn? (lambda (error) (warn error))])
-    (~>
-      (vector-ref (current-command-line-arguments 0))
-      ;; TODO Read list as datum from string gotten above, on the form "(thing1 thing2)"
-      ))
-  empty
-  )
+  (~>
+    (vector-ref (current-command-line-arguments) 0)
+    open-input-string
+    read))
 
 ;; Read commands from file
 ;; If no file is found or is corrupted, try to read from a backup fifo
