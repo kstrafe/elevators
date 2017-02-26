@@ -4,15 +4,26 @@
 
 (require lens threading "data-structures.rkt" "lenses.rkt" "logger.rkt" "motor.rkt")
 
+;; Read backup commands from current command line arguments
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; IMPURE : This procedure is impure as it reads from command line arguments ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (read-backup-commands#io)
+  (~>
+    (vector-ref (current-command-line-arguments) 0)
+    open-input-string
+    read))
+
 ;; Read commands from file
+;; If no file is found or is corrupted, try to read from a backup fifo
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMPURE : This procedure is impure as it reads from a file ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (read-commands#io)
-  (with-handlers ([exn? (lambda (error) (warn error) empty)])
+  (with-handlers ([exn? (lambda (error) (warn error))])
     (let* ([filepath "temporaries/commands"]
-           [result (if (file-exists? filepath) (file->value filepath) empty)])
-      (if (eof-object? result) empty result))))
+           [result (if (file-exists? filepath) (file->value filepath) (read-backup-commands#io))])
+      (if (eof-object? result) (read-backup-commands#io) result))))
 
 ;; Create a new empty elevator
 (define (make-empty-elevator#io id name)
