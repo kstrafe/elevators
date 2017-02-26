@@ -2,6 +2,8 @@
 
 (require racket/async-channel "try-get-last.rkt")
 
+(define initial-time-to-live 5)
+
 ;; Open up the fifo pipe for writing
 (define monitor-fifo-in
   (when (file-exists? "temporaries/monitor-fifo")
@@ -30,7 +32,7 @@
 ;; When time-to-live becomes negative the old elevator is killed
 ;; and a new one is spawned.
 ;; Else the loop continues with its new message.
-(let loop ([message empty] [time-to-live 5])
+(let loop ([message empty] [time-to-live initial-time-to-live])
   (let ([message* (async-channel-try-get-last#io fifo-channel #f)]
         [time-to-live* (sub1 time-to-live)])
     (sleep 1)
@@ -38,4 +40,4 @@
       ([negative? time-to-live]  (respawn-elevator message #t))
       ([eof-object? message*]    (respawn-elevator message #f))
       ([false? message*]         (loop message time-to-live*))
-      (else                      (loop message* time-to-live)))))
+      (else                      (loop message* initial-time-to-live)))))
