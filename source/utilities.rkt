@@ -8,8 +8,10 @@
   (for-syntax racket/syntax))
 
 ;; this: and other: structures
-(define this:state     (lens-compose attributes-state-lens (hash-ref-lens id)))
-(define this:opening   (lens-compose state-opening-time-lens attributes-state-lens (hash-ref-lens id)))
+(define this:attribute (hash-ref-lens id))
+(define this:ttl       (lens-compose attributes-time-to-live-lens this:attribute))
+(define this:state     (lens-compose attributes-state-lens this:attribute))
+(define this:opening   (lens-compose state-opening-time-lens this:state))
 (define this:command   (lens-compose state-command-requests-lens this:state))
 (define this:call      (lens-compose state-call-requests-lens this:state))
 (define this:position  (lens-compose state-position-lens this:state))
@@ -241,7 +243,7 @@
 ;; so we manually insert this elevator into the elevators hash-table to ensure that it will
 ;; always exist.
 (define (insert-self-into-elevators elevators folded-elevators)
-  (lens-set this:state elevators (lens-view this:state folded-elevators)))
+  (lens-set this:ttl elevators time-to-live))
 
 ;; Remove all elevators whose time-to-live value is negative
 (define (remove-all-dead-elevators elevators)

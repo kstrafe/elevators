@@ -30,7 +30,7 @@
       (let ([input-buffer (make-bytes 65535)])
         (let-values ([(message-length source-host source-port) (udp-receive!* udp-channel input-buffer)])
           (if message-length
-            (with-handlers ([exn? (lambda (e) (receive#io))])
+            (with-handlers ([exn? (lambda (error) (trce "Got exn in receive#io" error) (receive#io))])
               (let ([message (fasl->s-exp input-buffer)])
                 (if (hash-check message)
                   (cons (first message) (subreceive (add1 have-received)))
@@ -41,17 +41,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define broadcast-address
-  (let-values ([(program out in err)
-    ;; TODO Use a more reliable method here
-    ;; Using a subprocess works, but sometimes there are other network
-    ;; entities also serving Bcast, which means that this network module
-    ;; broadcasts to the wrong network.
-    (subprocess #f #f #f "/usr/bin/env" "bash" "-c" "ifconfig | grep Bcast | cut -d':' -f 3 | cut -d' ' -f 1")])
-    (let ([error (port->string err)])
-      (when (non-empty-string? error)
-        (ftal "Unable to get broadcast address" error)
-        (exit 1)))
-    (read-line out)))
+  (delay/thread
+    (let retry ()
+      (let-values ([(program out in err)
+        ;; TODO Use a more reliable method here
+        ;; Using a subprocess works, but sometimes there are other network
+        ;; entities also serving Bcast, which means that this network module
+        ;; broadcasts to the wrong network.
+          (subprocess #f #f #f "/usr/bin/env" "bash" "-c" "ifconfig | grep Bcast | cut -d':' -f 3 | cut -d' ' -f 1")])
+        (let ([error (port->string err)])
+          (when (non-empty-string? error)
+            (crit "Unable to get broadcast address" error)))
+        (let ([ip (read-line out)])
+          (if (non-empty-string? ip)
+            ip
+            (begin
+              (warn* "Unable to find broadcast address, retrying in one second")
+              (sleep 1)
+              (retry))))))))
+
 (define-values (broadcast-port broadcast-sleep) (values 30073 0.04))
 
 ;; Check if a message's hash is the same as the has of its data
@@ -71,7 +79,8 @@
       (if new-value
         (loop new-value)
         (begin
-          (when to-send
-            (udp-send-to udp-channel broadcast-address broadcast-port (s-exp->fasl to-send)))
+          (when (and to-send (promise-forced? broadcast-address))
+            (with-handlers ([exn:fail:network? erro*])
+              (udp-send-to udp-channel (force broadcast-address) broadcast-port (s-exp->fasl to-send))))
           (sleep broadcast-sleep)
           (loop to-send))))))))
