@@ -60,9 +60,9 @@
 ;; It only sends pressed buttons to main
 ;; Also sets the lamp of a pressed button to "on"
 (define poll-buttons (thread (lambda ()
-  (let loop ()
+  (let loop ([old-commands (build-list floor-count (lambda (x) 0))])
     (sleep 0.05)
     (let-values ([(up down command) (apply values (map poll-direction-buttons#io elevator-hardware:button-list))])
-      (for ([up* up] [down* down] [command* command] [floor floor-count])
-        (map (curryr set-and-send#io floor) elevator-hardware:button-list (list up* down* command*)))
-      (loop))))))
+      (for ([up* up] [down* down] [command* command] [floor floor-count] [old-command* old-commands])
+        (map (curryr set-and-send#io floor) elevator-hardware:button-list (list up* down* (if (> command* old-command*) 1 0))))
+      (loop command))))))

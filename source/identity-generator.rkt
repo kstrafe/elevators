@@ -1,9 +1,8 @@
-#lang racket/unit
+#lang racket
 
-(require libuuid racket/file racket/string "identity-generator-sig.rkt")
+(provide id name)
 
-(import)
-(export identity-generator^)
+(require libuuid "logger.rkt")
 
 (define names (file->value "resources/names"))
 
@@ -17,7 +16,7 @@
 (define (generate-or-load-identity#io)
   (with-handlers ([exn?
     (lambda (e)
-      (displayln e)
+      (info e)
       (values (uuid-generate) (generate-name#io)))])
     (let ([filepath "temporaries/identity"])
       (if (file-exists? filepath)
@@ -28,5 +27,4 @@
             (lambda () (write (list id name))))
           (values id name))))))
 
-;; Load/generate an identity
 (define-values (id name) (generate-or-load-identity#io))

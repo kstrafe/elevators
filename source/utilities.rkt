@@ -1,24 +1,8 @@
-#lang racket/unit
+#lang racket
 
-(require racket/bool racket/fasl racket/file racket/function racket/hash racket/list racket/match racket/pretty racket/syntax
-  lens rackunit rackunit/text-ui threading
-  "identity-generator-sig.rkt" "utilities-sig.rkt"
-  "data-structures.rkt" "logger.rkt" "motor.rkt"
-  (for-syntax racket/syntax))
+(provide (all-defined-out))
 
-(import identity-generator^)
-(export utilities^)
-
-;; this: and other: structures
-(define this:state     (lens-compose attributes-state-lens (hash-ref-lens id)))
-(define this:opening   (lens-compose state-opening-time-lens attributes-state-lens (hash-ref-lens id)))
-(define this:command   (lens-compose state-command-requests-lens this:state))
-(define this:call      (lens-compose state-call-requests-lens this:state))
-(define this:position  (lens-compose state-position-lens this:state))
-(define this:done      (lens-compose state-done-requests-lens this:state))
-(define this:servicing (lens-compose state-servicing-requests-lens this:state))
-
-(define (other:servicing id) (lens-compose (lens-compose state-servicing-requests-lens attributes-state-lens (hash-ref-lens id))))
+(require racket/hash lens threading "lenses.rkt" "data-structures.rkt" "logger.rkt")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Common tools
@@ -31,27 +15,6 @@
     (when (not (equal? (first elems) (second elems)))
       (procedure (first elems))))
   complex)
-
-;; Read backup commands from current command line arguments
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; IMPURE : This procedure is impure as it reads from command line arguments ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (read-backup-commands#io)
-  (~>
-    (vector-ref (current-command-line-arguments) 0)
-    open-input-string
-    read))
-
-;; Read commands from file
-;; If no file is found or is corrupted, try to read from a backup fifo
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; IMPURE : This procedure is impure as it reads from a file ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (read-commands#io)
-  (with-handlers ([exn? (lambda (error) (warn error))])
-    (let* ([filepath "temporaries/commands"]
-           [result (if (file-exists? filepath) (file->value filepath) (read-backup-commands#io))])
-      (if (eof-object? result) (read-backup-commands#io) result))))
 
 ;; Get the first of a list or return empty
 (define (first-or-empty list) (if (empty? list) empty (first list)))
@@ -79,33 +42,8 @@
     reverse
     (append stored-commands)))
 
-(define-syntax-rule (check-equals? call ((input ...) result) ...)
-  (begin (check-equal? (call input ...) result) ...))
-
-(define prune-requests-tests
-  (test-suite "Test prune-requests"
-    (check-equals? prune-requests
-      (('() '())                                                                  '())
-      (('(#s(request up 0 0)) '(#s(request up 0 0)))            '(#s(request up 0 0)))
-      (('(#s(request up 1 0)) '(#s(request up 1 0)))            '(#s(request up 1 0)))
-      (('(#s(request up 1 2)) '(#s(request up 1 0)))            '(#s(request up 1 0)))
-      (('(#s(request up 1 0)) '(#s(request up 1 2)))            '(#s(request up 1 2)))
-
-      (('(#s(request down 0 0)) '(#s(request up 0 0)))          '(#s(request down 0 0) #s(request up 0 0)))
-      (('(#s(request up 0 0)) '(#s(request down 0 0)))          '(#s(request up 0 0) #s(request down 0 0)))
-      (('(#s(request down 0 1)) '(#s(request down 0 0)))        '(#s(request down 0 0)))
-
-      (((for/list ([i (range 50 150)]) (request 'command i 0)) (for/list ([i 100]) (request 'command i 0)))
-        (append (for/list ([i (range 100 150)]) (request 'command i 0)) (for/list ([i 100]) (request 'command i 0)))))))
-(run-tests prune-requests-tests)
-
-
 (define done-of-hash (lens-compose state-done-requests-lens attributes-state-lens))
 (define call-of-hash (lens-compose state-call-requests-lens attributes-state-lens))
-
-;; Create a new empty elevator
-(define (make-empty-elevator id name)
-  (attributes (state id name 0 empty empty (read-commands#io) empty 0) time-to-live (current-inexact-milliseconds)))
 
 ;; Calculate which call requests are available to pick
 ;;
@@ -141,6 +79,13 @@
         ([and call? (symbol=? (request-direction request) 'up)]   'up)
         ([and call? (symbol=? (request-direction request) 'down)] 'down)
         (else       (compute-direction-to-travel state (rest requests) call?))))))
+
+;; When the final servicing is a command, get its floor, else return -1
+(define (final-command-floor state)
+  (let ([requests (state-servicing-requests state)])
+    (if (and (not (empty? requests)) (command-request? (last requests)))
+      (request-floor (last requests))
+      #f)))
 
 ;; Compute an elevator's score
 ;; Computes the distance from an elevator to a request
@@ -182,7 +127,8 @@
               (request-direction            top-request)
               (elevator-request-direction   elevator)
               (state-position               elevator)
-              (request-floor                top-request))) _)
+              (request-floor                top-request)
+              (final-command-floor          elevator))) _)
           (filter (lambda (elev-info)
             (or
               (and
@@ -192,8 +138,10 @@
                   (_ #t))
                 (symbol=? (second elev-info) (third  elev-info))
                 (symbol=? (second elev-info) (fourth elev-info))
+                (not (creates-cycle? (first elev-info) (seventh elev-info)))
                 (or (symbol=? (fourth elev-info) (fifth elev-info)) (symbol=? (fifth elev-info) 'halt)))
-              (symbol=? (second elev-info) 'halt))) _)
+              (symbol=? (second elev-info) 'halt)
+              (equal? (eighth elev-info) (seventh elev-info)))) _)
           (map first _)
           (map (lambda (elevator) (list (state-id elevator) (score-elevator-request elevator top-request))) _)
           (sort string<? #:key first)
@@ -243,7 +191,7 @@
 ;; so we manually insert this elevator into the elevators hash-table to ensure that it will
 ;; always exist.
 (define (insert-self-into-elevators elevators folded-elevators)
-  (lens-set this:state elevators (lens-view this:state folded-elevators)))
+  (lens-set this:ttl elevators time-to-live))
 
 ;; Remove all elevators whose time-to-live value is negative
 (define (remove-all-dead-elevators elevators)
@@ -252,21 +200,6 @@
 ;; Decrement 'time-to-live' in for each elevator
 (define (decrement-all-time-to-live elevators)
   (map-hash-table elevators (lambda (x) (lens-transform attributes-time-to-live-lens x sub1))))
-
-;; Update the position number in the current elevator
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; IMPURE : This procedure is impure as it reads a value coming from the detectors ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (update-position#io elevators)
-  (if (is-blocked?#io)
-    (begin
-      (crit "Motor is blocked")
-      (sleep 1)
-      (update-position#io elevators))
-    (let ([floor (any-new-floor-reached?#io)])
-      (if floor
-        (lens-set this:position elevators floor)
-        elevators))))
 
 ;; Unify (create a list containing all unique) done-requests from all elevators
 ;; Also unify all call-requests from all elevators.
@@ -305,18 +238,6 @@
 ;; as the call request, and that the elevator is below/above the request depending on the request.
 (define (assign-call-requests elevators)
   (process-available-call-requests elevators (compute-available-call-requests elevators)))
-
-;; Store commands locally, to be restored in case of power loss
-;;
-;; Writes the commands to a file. In case of any power loss, the elevator
-;; should read the file to restore all commands that were queued.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; IMPURE : This procedure is impure as it writes to a file ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (store-commands#io elevators)
-  (with-handlers ([exn? (lambda (error) (crit error))])
-    (with-output-to-file "temporaries/commands" (lambda () (pretty-write (lens-view this:command elevators))) #:exists 'replace))
-  elevators)
 
 ;; Compute which commands are going to be serviced by checking the current position
 ;; and the current heading. We can find out which commands to process. These commands
@@ -358,21 +279,6 @@
               ([symbol=? direction 'down] >))
             #:key request-floor))))))
 
-;; Calls move-to-floor depending on the top of the 'servicing-requests'
-;; field in the current elevator.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; IMPURE : This procedure is impure as it sets the direction of the elevator motor ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (set-motor-direction-to-task#io elevators)
-  (when (not (positive? (lens-view this:opening elevators)))
-    (let ([servicing-requests (lens-view this:servicing elevators)])
-      (when (not (empty? servicing-requests))
-        (~>
-          (first servicing-requests)
-          request-floor
-          move-to-floor#io))))
-  elevators)
-
 ;; Ensure that done-requests doesn't grow without bounds
 ;;
 ;; The done-requests list (of this elevator) can grow until it reaches
@@ -404,7 +310,7 @@
 ;; The sorting of these requests will flip the direction during each iteration,
 ;; making the motor go up and down all the time.
 ;;
-;; This should never happen according to the logic we have defined.
+;; This should never happen according to the logic we have defined (Except after restart when position is unknown).
 ;; Our rules always check if the state would be legitimate and not have any cycles.
 ;; However, if it ever comes to that, that a cycle is detected, we clean
 ;; the servicing request list by removing all requests from it whilst
@@ -423,6 +329,16 @@
                 (crit "Servicing has a floor cycle, emptying servicing" servicing)
                 empty)))
           servicing)))))
+
+;; Check if adding a floor to the current elevator's servicing requests will create a floor cycle.
+;; A floor cycle is when the elevator is servicing floors in which it is currently between.
+;; We call this cycle because the sorting algorithm will flip the floors that the elevator must
+;; serve during each iteration, which is unacceptable.
+(define (creates-cycle? elevator new-floor)
+  (let* ([position (list (state-position elevator))]
+         [servicing (append (list new-floor) (map request-floor (state-servicing-requests elevator)))]
+         [servicing* (sort servicing <)])
+    (not (or (apply <= (append position servicing*)) (apply <= (append servicing* position))))))
 
 ;; Check that position is within allowed limits.
 ;; This includes checking that position is not below zero,

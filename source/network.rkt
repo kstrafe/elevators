@@ -2,7 +2,7 @@
 
 (provide broadcast#io receive#io)
 
-(require racket/async-channel racket/fasl sha "logger.rkt")
+(require racket/async-channel racket/fasl sha "try-get-last.rkt" "logger.rkt")
 
 ;; Broadcast a message
 ;;
@@ -30,31 +30,46 @@
       (let ([input-buffer (make-bytes 65535)])
         (let-values ([(message-length source-host source-port) (udp-receive!* udp-channel input-buffer)])
           (if message-length
-            (with-handlers ([exn? (lambda (e) (receive#io))])
+            (with-handlers ([exn? (lambda (error) (trce "Got exn in receive#io" error) (receive#io))])
               (let ([message (fasl->s-exp input-buffer)])
                 (if (hash-check message)
                   (cons (first message) (subreceive (add1 have-received)))
-                  (subreceive have-received))))
+                  (subreceive (add1 have-received)))))
             empty)))))
   (subreceive 0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define broadcast-address
+;; Turn lines into a list of strings
+(define (lines->list port)
+  (let ([ip (read-line port)])
+    (if (eof-object? ip)
+      empty
+      (cons ip (lines->list port)))))
+
+;; Continuously write the freshest broadcast addresses to this channel
+;; This allows us to easily continue working even if there are many broadcast addresses
+(define broadcast-addresses-channel (make-async-channel))
+(define broadcast-addresses (thread (lambda () (let retry ()
   (let-values ([(program out in err)
-    ;; TODO Use a more reliable method here
-    ;; Using a subprocess works, but sometimes there are other network
-    ;; entities also serving Bcast, which means that this network module
-    ;; broadcasts to the wrong network.
-    (subprocess #f #f #f "/usr/bin/env" "bash" "-c" "ifconfig | grep Bcast | cut -d':' -f 3 | cut -d' ' -f 1")])
+    ;; TODO Get the broadcast address in a more direct manner. Not parsing a string from ifconfig or ip.
+      (subprocess #f #f #f "/usr/bin/env" "bash" "-c" "ifconfig | grep Bcast | cut -d':' -f 3 | cut -d' ' -f 1")])
     (let ([error (port->string err)])
       (when (non-empty-string? error)
-        (ftal "Unable to get broadcast address" error)
-        (exit 1)))
-    (read-line out)))
+        (crit "Unable to get broadcast address" error)))
+    (let ([ip (lines->list out)])
+      (if (not (empty? ip))
+        (begin
+          (async-channel-put broadcast-addresses-channel ip)
+          (sleep 5))
+        (begin
+          (warn* "Unable to find broadcast addresses, retrying in one second")
+          (sleep 1)))
+      (retry)))))))
+
 (define-values (broadcast-port broadcast-sleep) (values 30073 0.04))
 
-;; Check if a message's hash is the same as the has of its data
+;; Check if a message's hash is the same as the hash of its data
 (define (hash-check message) (bytes=? (hashify (first message)) (second message)))
 
 ;; Serialize and then hash a message
@@ -66,12 +81,12 @@
 
 ;; Continuously broadcasts until a new value is supplied by the broadcast function
 (define broadcast-thread (thread (lambda ()
-  (let loop ([to-send #f])
-    (let ([new-value (async-channel-try-get broadcast-channel)])
-      (if new-value
-        (loop new-value)
-        (begin
-          (when to-send
-            (udp-send-to udp-channel broadcast-address broadcast-port (s-exp->fasl to-send)))
-          (sleep broadcast-sleep)
-          (loop to-send))))))))
+  (let loop ([to-send #f] [addresses #f])
+    (let ([to-send*    (async-channel-try-get-last#io broadcast-channel to-send)]
+          [addresses*  (async-channel-try-get-last#io broadcast-addresses-channel addresses)])
+      (when (and to-send addresses)
+        (with-handlers ([exn:fail:network? erro*])
+          (for ([address addresses*])
+            (udp-send-to udp-channel address broadcast-port (s-exp->fasl to-send*)))))
+      (sleep broadcast-sleep)
+      (loop to-send* addresses*))))))
