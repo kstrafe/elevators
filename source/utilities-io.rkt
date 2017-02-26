@@ -9,10 +9,13 @@
 ;; IMPURE : This procedure is impure as it reads from command line arguments ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (define (read-backup-commands#io)
-  (~>
-    (vector-ref (current-command-line-arguments) 0)
-    open-input-string
-    read))
+  (let ([args (current-command-line-arguments)])
+    (if (or (void? args) (= (vector-length args) 0))
+      empty
+      (~>
+        (vector-ref args 0)
+        open-input-string
+        read))))
 
 ;; Read commands from file
 ;; If no file is found or is corrupted, try to read from a backup fifo
