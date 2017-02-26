@@ -1,10 +1,6 @@
 #lang racket
 
-(require racket/async-channel "try-get-last.rkt" "logger.rkt")
-
-;; DEBUG
-(current-output-port (open-output-file "temporaries/monitor" #:exists 'replace))
-(current-error-port  (open-output-file "temporaries/monitor" #:exists 'replace))
+(require racket/async-channel "try-get-last.rkt")
 
 ;; Open up the fifo pipe for writing
 (define monitor-fifo-in
