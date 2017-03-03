@@ -36,7 +36,7 @@
 (let loop ([message empty] [time-to-live initial-time-to-live])
   (let ([message* (async-channel-try-get-last#io fifo-channel #f)]
         [time-to-live* (sub1 time-to-live)])
-    (sleep 1)
+    (sleep 0.1)
     (cond
       ([negative? time-to-live]  (respawn-elevator message #t))
       ([eof-object? message*]    (respawn-elevator message #f))
