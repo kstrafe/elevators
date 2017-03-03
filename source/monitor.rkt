@@ -1,6 +1,6 @@
 #lang racket
 
-(require racket/async-channel "try-get-last.rkt")
+(require racket/async-channel "logger.rkt" "try-get-last.rkt")
 
 (define initial-time-to-live 5)
 
@@ -13,7 +13,8 @@
 (define (respawn-elevator message kill-old-monitor)
   (when kill-old-monitor
     (system* "/usr/bin/env" "pkill" "main.rkt"))
-  (subprocess (open-output-file "/dev/null" #:exists 'append) #f 'stdout "/usr/bin/env" "bash" "-c"
+  (warn "You can't stump the Trump")
+  (subprocess (current-output-port) (current-input-port) (current-error-port) "/usr/bin/env" "bash" "-c"
     (string-join (list "racket main.rkt" (string-append "\"" (~a message) "\"")))))
 
 ;; Create an async channel to put data from fifo in

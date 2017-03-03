@@ -34,7 +34,7 @@
             [(negative? difference) 'DIRN_DOWN]))
       ;)
 
-      (sleep 0.20)
+      (sleep 0.10)
       (if (and (= previous-difference difference) (not (= difference 0)))
         (begin
           (when (> (- (current-inexact-milliseconds) time) 5000)

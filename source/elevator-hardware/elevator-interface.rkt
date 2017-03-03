@@ -7,7 +7,7 @@
          racket/runtime-path "../logger.rkt")
 
 ;; Controls whether the hardware should look for a real or simulated elevator
-(define simulated #t)
+(define simulated #f)
 
 (define (open-door#io)  (set-door-open-lamp#io 1))
 (define (close-door#io) (set-door-open-lamp#io 0))
