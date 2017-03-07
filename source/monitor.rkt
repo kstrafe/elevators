@@ -1,7 +1,11 @@
 #lang racket
 
+;;;; The monitor is its own program. It checks whether main is functioning properly.
+;;;; If it is not, this program restarts main.
+
 (require racket/async-channel "logger.rkt" "try-get-last.rkt")
 
+;; The amount of iterations we tolerate of main not sending us data
 (define initial-time-to-live 5)
 
 ;; Open up the fifo pipe for writing
@@ -13,9 +17,10 @@
 (define (respawn-elevator message)
   (system* "/usr/bin/env" "pkill" "-9" "-f" "main.rkt")
   (warn "You can't stump the Trump")
-  (subprocess
-    (open-output-file "temporaries/new-main-out" #:exists 'replace) #f 'stdout
-    "/usr/bin/env" "bash" "-c" (string-join (list "racket main.rkt" (string-append "\"" (~a message) "\"")))))
+  (subprocess (open-output-file "temporaries/new-main-out" #:exists 'replace)
+              #f
+              'stdout
+              "/usr/bin/env" "bash" "-c" (string-join (list "racket main.rkt" (string-append "\"" (~a message) "\"")))))
 
 ;; Create an async channel to put data from fifo in
 (define fifo-channel (make-async-channel))
@@ -33,11 +38,10 @@
 ;; old elevator is killed and a new one is spawned.
 ;; Else the loop continues with its new message.
 (let loop ([message empty] [time-to-live initial-time-to-live])
-  ; (trce time-to-live)
-  (let ([message* (async-channel-try-get-last#io fifo-channel #f)]
-        [time-to-live* (sub1 time-to-live)])
+  (let ([message*       (async-channel-try-get-last#io fifo-channel #f)]
+        [time-to-live*  (sub1 time-to-live)])
     (sleep 0.1)
     (cond
-      ([or (negative? time-to-live) (eof-object? message*)] (respawn-elevator message))
-      ([false? message*] (loop message time-to-live*))
-      (else (loop message* initial-time-to-live)))))
+      ([or (negative? time-to-live) (eof-object? message*)]  (respawn-elevator message))
+      ([false? message*]                                     (loop message time-to-live*))
+      (else                                                  (loop message* initial-time-to-live)))))

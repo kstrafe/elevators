@@ -1,5 +1,7 @@
 #lang racket
 
+;;;; Loads the current elevator's identity and name from a file. Creates a new one if it doesn't exist.
+
 (provide id name)
 
 (require libuuid "logger.rkt")
@@ -7,16 +9,15 @@
 (define names (file->value "resources/names"))
 
 (define (select-random-name#io)
-  (let ([len (length names)])
-    (list-ref names (random len))))
+  (list-ref names (random (length names))))
 
 (define (generate-name#io)
   (string-join (list (select-random-name#io) (select-random-name#io))))
 
 (define (generate-or-load-identity#io)
   (with-handlers ([exn?
-    (lambda (e)
-      (info e)
+    (lambda (error)
+      (info error)
       (values (uuid-generate) (generate-name#io)))])
     (let ([filepath "temporaries/identity"])
       (if (file-exists? filepath)

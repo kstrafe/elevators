@@ -10,14 +10,14 @@
 ;;                                                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                        ;;
-;; This module contains all impure functions.             ;;
+;; This module contains impure functions.                 ;;
 ;;                                                        ;;
 ;; Functions annotated with "#io" at the end of their     ;;
-;; name is impure because they make use of input/output   ;;
+;; names are impure because they make use of input/output ;;
 ;; operations.                                            ;;
 ;;                                                        ;;
 ;; Functions annotated with "!" at the end of their name  ;;
-;; is impure because they perform side-effects.           ;;
+;; is impure because they perform side-effects/mutation.  ;;
 ;;                                                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

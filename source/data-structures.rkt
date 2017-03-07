@@ -1,5 +1,7 @@
 #lang racket
 
+;;;; Define constants and important data structures.
+
 (provide (all-defined-out))
 
 (require lens)
@@ -19,5 +21,5 @@
   (state       (id name position servicing-requests call-requests command-requests done-requests opening-time))
   (request     (direction floor timestamp)))
 
-(define (command-request? request) (symbol=? (request-direction request) 'command))
-(define (call-request? request) (not (symbol=? (request-direction request) 'command)))
+(define (command-request? request)  (symbol=? (request-direction request) 'command))
+(define (call-request? request)     (not (command-request? request)))

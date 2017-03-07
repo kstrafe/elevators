@@ -1,5 +1,7 @@
 #lang racket
 
+;;;; Utilities for transforming the elevators hash table.
+
 (provide (all-defined-out))
 
 (require racket/hash lens threading "data-structures.rkt" "lenses.rkt" "logger.rkt")
