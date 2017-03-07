@@ -23,20 +23,19 @@
 ;; and put into a list of (('m1' timestamp1) ('m2' timestamp2) ...).
 ;; This list is returned.
 (define (receive#io)
-  (define max-messages-per-receive 500)
-  (define (subreceive have-received)
-    (if (> have-received max-messages-per-receive)
-      empty
-      (let ([input-buffer (make-bytes 65535)])
+  (with-handlers ([exn? (lambda (error) (trce "Got exn in receive#io" error) (receive#io))])
+    (define max-messages-per-receive 500)
+    (define (subreceive have-received input-buffer)
+      (if (> have-received max-messages-per-receive)
+        empty
         (let-values ([(message-length source-host source-port) (udp-receive!* udp-channel input-buffer)])
           (if message-length
-            (with-handlers ([exn? (lambda (error) (trce "Got exn in receive#io" error) (receive#io))])
-              (let ([message (fasl->s-exp input-buffer)])
-                (if (hash-check message)
-                  (cons (first message) (subreceive (add1 have-received)))
-                  (subreceive (add1 have-received)))))
-            empty)))))
-  (subreceive 0))
+            (let ([message (fasl->s-exp input-buffer)])
+              (if (hash-check message)
+                (cons (first message) (subreceive (add1 have-received) input-buffer))
+                (subreceive (add1 have-received) input-buffer)))
+            empty))))
+    (subreceive 0 (make-bytes 65535))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
