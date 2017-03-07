@@ -13,8 +13,9 @@
 (define (respawn-elevator message)
   (system* "/usr/bin/env" "pkill" "-9" "-f" "main.rkt")
   (warn "You can't stump the Trump")
-  (subprocess (current-output-port) (current-input-port) (current-error-port) "/usr/bin/env" "bash" "-c"
-    (string-join (list "racket main.rkt" (string-append "\"" (~a message) "\"")))))
+  (subprocess
+    (open-output-file "temporaries/new-main-out" #:exists 'replace) #f 'stdout
+    "/usr/bin/env" "bash" "-c" (string-join (list "racket main.rkt" (string-append "\"" (~a message) "\"")))))
 
 ;; Create an async channel to put data from fifo in
 (define fifo-channel (make-async-channel))

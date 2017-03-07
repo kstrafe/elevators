@@ -18,7 +18,9 @@
     (system* "/usr/bin/env" "mkfifo" "temporaries/monitor-fifo"))
 
   ;; Spawn a monitor
-  (subprocess (current-output-port) (current-input-port) (current-error-port) "/usr/bin/env" "setsid" "bash" "-c" "racket source/monitor.rkt")
+  (subprocess
+    (open-output-file "temporaries/monitor-out" #:exists 'replace) #f 'stdout
+    "/usr/bin/env" "setsid" "bash" "-c" "racket source/monitor.rkt")
   (open-output-file "temporaries/monitor-fifo" #:exists 'append))
 
 (define (core#io complex-struct)
