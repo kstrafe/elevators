@@ -3,33 +3,19 @@
 (provide (rename-out (core#io core)))
 
 (require lens threading
-  "control-panel.rkt" "data-structures.rkt" "identity-generator.rkt" "lenses.rkt" "elevator-hardware/elevator-interface.rkt"
-  "logger.rkt" "network.rkt" "utilities.rkt" "utilities-io.rkt")
+         "control-panel.rkt" "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "identity-generator.rkt"
+         "lenses.rkt" "logger.rkt" "network.rkt" "utilities.rkt" "utilities-io.rkt")
 
 ;; Ensure that we use the incremental garbage collector
 (collect-garbage 'incremental)
 
-;; Spawn a monitor that brings this elevator back online in case of failure.
-;;
-;; Returns a port referencing the monitor fifo.
-(define (spawn-monitor-and-get-fifo)
-  ;; Create a pipe to use for communication between elevator and monitor
-  (when (not (file-exists? "temporaries/monitor-fifo"))
-    (system* "/usr/bin/env" "mkfifo" "temporaries/monitor-fifo"))
-
-  ;; Spawn a monitor
-  (subprocess
-    (open-output-file "temporaries/monitor-out" #:exists 'replace) #f 'stdout
-    "/usr/bin/env" "setsid" "bash" "-c" "racket source/monitor.rkt")
-  (open-output-file "temporaries/monitor-fifo" #:exists 'append))
-
 (define (core#io complex-struct)
-  ; (trce complex-struct)
   (if (not (complex? complex-struct))
     (complex (list 0 0) (list empty empty) (list empty empty) empty (spawn-monitor-and-get-fifo))
-    (let ([complex* (lens-transform complex-elevators-lens complex-struct discuss-good-solution-with-other-elevators-and-execute#io)]
+    (let ([complex* (lens-transform complex-elevators-lens
+                                    complex-struct
+                                    discuss-good-solution-with-other-elevators-and-execute#io)]
           [cel complex-elevators-lens])
-      ;; Write to monitor fifo
       (when (not (empty? (complex-elevators complex-struct)))
         (let ([message (lens-view cplx:command complex-struct)])
           (write message (complex-monitor-fifo-out complex-struct))))
@@ -43,26 +29,21 @@
           store-commands#io
           set-motor-direction-to-task#io))
         move-complex-windows
-        (if-changed-call complex-floors set-floor-indicator#io)
-        (if-changed-call complex-calls set-call-lights#io)
-        (if-changed-call complex-commands set-command-lights#io)))))
+        (if-changed-call complex-floors    set-floor-indicator#io)
+        (if-changed-call complex-calls     set-call-lights#io)
+        (if-changed-call complex-commands  set-command-lights#io)))))
 
-(define (move-complex-windows complex)
-  (let* ([lt lens-transform] [com (curryr lens-compose complex-elevators-lens)] [get (curryr lens-view complex)])
-    (~>
-      complex
-      (lt complex-floors-lens   _ (lambda (floors)  (list (get (com this:position))  (first floors))))
-      (lt complex-calls-lens    _ (lambda (buttons) (list (get (com this:call))      (first buttons))))
-      (lt complex-commands-lens _ (lambda (buttons) (list (get (com this:command))   (first buttons)))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Internal                                               ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; This algorithm consumes a hash-table of elevators
-;; and performs side effects with it, returning a new
-;; hash-table of elevators.
+;; This algorithm consumes a hash-table of elevators and performs side effects with it.
+;;
+;; It returns a new hash-table of elevators.
 (define (discuss-good-solution-with-other-elevators-and-execute#io elevators)
   (if (or (empty? elevators) (not (hash-has-key? elevators id)))
     (discuss-good-solution-with-other-elevators-and-execute#io (hash id (make-empty-elevator#io id name)))
     (begin
-      ; (trce (lens-view this:servicing elevators))
       (broadcast#io (lens-view this:state elevators))
       (sleep iteration-sleep-time)
       (let ([current-open (lens-view this:opening elevators)])
@@ -89,3 +70,21 @@
           prune-servicing-requests
           detect-and-remove-floor-cycle
           check-for-fatal-situations)))))
+
+(define (move-complex-windows complex)
+  (let* ([lt lens-transform] [com (curryr lens-compose complex-elevators-lens)] [get (curryr lens-view complex)])
+    (~>
+      complex
+      (lt complex-floors-lens    _ (lambda (floors)   (list (get (com this:position))  (first floors))))
+      (lt complex-calls-lens     _ (lambda (buttons)  (list (get (com this:call))      (first buttons))))
+      (lt complex-commands-lens  _ (lambda (buttons)  (list (get (com this:command))   (first buttons)))))))
+
+;; Spawn a monitor that brings this elevator back online in case of failure.
+;; Also creates a pipe to use for communication between elevator and monitor.
+;;
+;; Returns a port referencing the monitor fifo.
+(define (spawn-monitor-and-get-fifo)
+  (when (not (file-exists? "temporaries/monitor-fifo")) (system* "/usr/bin/env" "mkfifo" "temporaries/monitor-fifo"))
+  (subprocess (open-output-file "temporaries/monitor-out" #:exists 'replace) #f 'stdout
+              "/usr/bin/env" "setsid" "bash" "-c" "racket source/monitor.rkt")
+  (open-output-file "temporaries/monitor-fifo" #:exists 'append))
