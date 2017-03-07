@@ -71,6 +71,12 @@
           detect-and-remove-floor-cycle
           check-for-fatal-situations)))))
 
+;; Moves the window we see the complex struct through.
+;;
+;; The newst values in the complex are replaced with new values from the current elevator state.
+;; The oldest values in the complex are dropped.
+;;
+;; The newly transformed complex struct is then returned.
 (define (move-complex-windows complex)
   (let* ([lt lens-transform] [com (curryr lens-compose complex-elevators-lens)] [get (curryr lens-view complex)])
     (~>
