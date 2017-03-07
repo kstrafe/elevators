@@ -1,5 +1,10 @@
 #lang racket
 
+;;;; Provides a function for getting the last new value from an asynchronous channel.
+;;;;
+;;;; This module provides a utility-io function. motor.rkt uses this function, but utilities.io uses motor.rkt.
+;;;; It has its own module to prevent cyclic dependencies.
+
 (provide async-channel-try-get-last#io)
 
 (require racket/async-channel)

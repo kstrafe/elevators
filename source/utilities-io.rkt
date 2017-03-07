@@ -1,5 +1,7 @@
 #lang racket
 
+;;;; Provides all utility functions that are impure and perform I/O.
+
 (provide (all-defined-out))
 
 (require lens threading "data-structures.rkt" "lenses.rkt" "logger.rkt" "motor.rkt")

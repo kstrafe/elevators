@@ -1,5 +1,7 @@
 #lang racket
 
+;;;; This module provides all the functions needed to interface Racket with the C driver for the elevator hardware.
+
 (provide (prefix-out elevator-hardware: (all-defined-out)))
 
 (require

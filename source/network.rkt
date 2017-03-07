@@ -1,5 +1,9 @@
 #lang racket
 
+;;;; This module handles all communication with the other elevators over UDP.
+;;;; It is also responsible for creating and maintaining a UDP connection when it is made available, regardless of
+;;;; network status when the elevator is started.
+
 (provide broadcast#io receive#io)
 
 (require racket/async-channel racket/fasl sha "logger.rkt" "try-get-last.rkt")

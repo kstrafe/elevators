@@ -1,5 +1,14 @@
 #lang racket
 
+;;;; This is the core of the elevator control. It runs the main algorithm of the system, which controls and calls all
+;;;; other parts of the system to accomplish its goal of semi-optimal distributed elevator control.
+;;;;
+;;;; Its job is to handle all requests by users and all communication with other elevators, providing the distributed
+;;;; system.
+;;;;
+;;;; It also provides an entrypoint for the persistent state of the application to be served. This is done to enable
+;;;; the reloadable library. It requires a state to be served from the persistent part of the system: main.rkt.
+
 (provide (rename-out (core#io core)))
 
 (require lens threading

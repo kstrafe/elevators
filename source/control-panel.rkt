@@ -1,5 +1,10 @@
 #lang racket
 
+;;;; Controls all interaction with the users of the elevator outside the system.
+;;;; This includes controlling all lights the elevator can use to signal behaviour: internal command lights,
+;;;; external call lights, the open door indicator and the floor indicator.
+;;;; It also includes any button presses the elevator receives, both from internal commands and external calls.
+
 (provide pop-button-states#io set-call-lights#io set-command-lights#io set-floor-indicator#io)
 
 (require racket/async-channel lens "data-structures.rkt" "elevator-hardware/elevator-interface.rkt" "logger.rkt")
