@@ -9,25 +9,20 @@
 (define initial-time-to-live 5)
 
 ;; Open up the fifo pipe for writing
-(define monitor-fifo-in
-  (when (file-exists? "temporaries/monitor-fifo")
-    (open-input-file "temporaries/monitor-fifo")))
+(define monitor-fifo-in (when (file-exists? "temporaries/monitor-fifo") (open-input-file "temporaries/monitor-fifo")))
 
 ;; Start a new main with backup commands as command line arguments
 (define (respawn-elevator message)
   (system* "/usr/bin/env" "pkill" "-9" "-f" "main.rkt")
   (warn "You can't stump the Trump")
-  (subprocess (open-output-file "temporaries/new-main-out" #:exists 'replace)
-              #f
-              'stdout
+  (subprocess (open-output-file "temporaries/new-main-out" #:exists 'replace) #f 'stdout
               "/usr/bin/env" "bash" "-c" (string-join (list "racket main.rkt" (string-append "\"" (~a message) "\"")))))
 
 ;; Create an async channel to put data from fifo in
 (define fifo-channel (make-async-channel))
 
 ;; Create a thread that constantly tries to read from the fifo asynchronously
-(define fifo-reader (thread (lambda ()
-  (let loop () (async-channel-put fifo-channel (read monitor-fifo-in)) (loop)))))
+(define fifo-reader (thread (lambda () (let loop () (async-channel-put fifo-channel (read monitor-fifo-in)) (loop)))))
 
 ;; Main loop of the monitor.
 ;;
