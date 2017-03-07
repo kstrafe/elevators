@@ -64,27 +64,26 @@
       (broadcast#io (lens-view this:state elevators))
       (sleep iteration-sleep-time)
       (let ([current-open (lens-view this:opening elevators)])
-        (if (positive? current-open)
-          (begin
-            (cond
-              ([= current-open door-open-iterations]  (elevator-hardware:open-door#io))
-              ([= current-open 1]                     (elevator-hardware:close-door#io)))
-            (lens-transform this:opening elevators sub1))
-          (~>
-            (receive#io)
-            (filter (lambda~> first state?) _)
-            filter-newest-to-hash
-            (unify-messages-and-elevators elevators)
-            (insert-self-into-elevators elevators)
-            remove-all-dead-elevators
-            decrement-all-time-to-live
-            ; trce* ; You can add a trce* anywhere inside a ~> to print the state
-            unify-requests
-            prune-call-requests-that-are-done
-            assign-call-requests
-            service-commands
-            sort-servicing
-            prune-done-requests
-            prune-servicing-requests
-            detect-and-remove-floor-cycle
-            check-for-fatal-situations))))))
+        (when (positive? current-open)
+          (cond
+            ([= current-open door-open-iterations]  (elevator-hardware:open-door#io))
+            ([= current-open 1]                     (elevator-hardware:close-door#io))))
+        (~>
+          (receive#io)
+          (filter (lambda~> first state?) _)
+          filter-newest-to-hash
+          (unify-messages-and-elevators elevators)
+          (insert-self-into-elevators elevators)
+          (decrement-open-door-time current-open)
+          remove-all-dead-elevators
+          decrement-all-time-to-live
+          ; trce* ; You can add a trce* anywhere inside a ~> to print the state
+          unify-requests
+          prune-call-requests-that-are-done
+          assign-call-requests
+          service-commands
+          sort-servicing
+          prune-done-requests
+          prune-servicing-requests
+          detect-and-remove-floor-cycle
+          check-for-fatal-situations)))))
