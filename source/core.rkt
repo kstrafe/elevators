@@ -76,7 +76,7 @@
           filter-newest-to-hash
           (unify-messages-and-elevators elevators)
           (insert-self-into-elevators elevators)
-          (decrement-open-door-time current-open)
+          decrement-open-door-time
           remove-all-dead-elevators
           decrement-all-time-to-live
           ; trce* ; You can add a trce* anywhere inside a ~> to print the state

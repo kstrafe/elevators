@@ -191,10 +191,11 @@
   (lens-set this:ttl elevators time-to-live))
 
 ;; Decrements the counter for an open door on this elevator if it is open.
-(define (decrement-open-door-time elevators current-open)
-  (if (positive? current-open)
-    (lens-transform this:opening elevators sub1)
-    elevators))
+(define (decrement-open-door-time elevators)
+  (let ([current-open (lens-view this:opening elevators)])
+    (if (positive? current-open)
+      (lens-transform this:opening elevators sub1)
+      elevators)))
 
 ;; Remove all elevators whose time-to-live value is negative
 (define (remove-all-dead-elevators elevators)
