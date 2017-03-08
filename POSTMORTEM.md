@@ -69,7 +69,7 @@ The code is built around the `state` data structure. It sends part of this over 
 reads it, and uses it to set lamps, set the elevator motor, and so on. The state is directly used by the algorithms
 for computing the optimal request for an elevator.
 
-We eventually needed some more data (to avoiding spamming key states) so we simply built a data structure containing
+We eventually needed some more data (to avoid spamming key states) so we simply built a data structure containing
 the `state` structure in addition to a few other fields. This allowed us to keep our core algorithms exactly the same.
 
 
