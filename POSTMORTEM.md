@@ -160,6 +160,9 @@ We're proud of our work, which overall gave us many mental challenges to overcom
 fault tolerance methods (even a monitor for restarting the program) in only about 634 lines of code.
 Normal projects for this class range from 500-1500 LoC.
 
+If you've never explored a lisp (like Racket) then I urge you to do so for the profound enlightenment it bestows upon you once you "get it".
+I'd like to finish this part with an excerpt from Let Over Lambda:
+
 > Macros are the single greatest advantage that lisp has as a programming language and the single greatest advantage of any programming language. With them you can do things that you simply cannot do in other languages. Because macros can be used to transform lisp into other programming languages and back, programmers who gain experience with them discover that all other languages are just skins on top of lisp. This is the big deal. Lisp is special because programming with it is actually programing at a higher level. Where most languages invent and enforce syntactic and semantic rules, lisp is general and malleable. With lisp, you make the rules.
 
 - Let Over Lambda, ch. 1
