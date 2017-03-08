@@ -1,6 +1,6 @@
 # Postmortem: Moloch Asmodeus Rex #
 
-Group 73 was founded in january of 2017 as a working group consisting of [dagerikhl](https://github.com/dagerikhl) and [BourgondAries](https://github.com/BourgondAries).
+Group 73 was founded in January of 2017 as a working group consisting of [dagerikhl](https://github.com/dagerikhl) and [BourgondAries](https://github.com/BourgondAries).
 The goal of the group was to implement elevator control software that is fault-tolerant. Each elevator is
 connected to a machine that is connected to the same network. We were to implement the driving software
 such that all elevators would work together as well as preventing faults from occurring.
@@ -52,7 +52,7 @@ an explicit variable). We then set the initial state to that buggy state and obs
 occur. Paired with `trce` we were able to find the bug very quickly.
 
 The code never uses `set!` mutation directly. The only place we use mutation is in `udp-bind!`, because
-there's no other way to to UDP in native racket.
+there's no other way to UDP in native racket.
 
 ### 4. Data Oriented Design ###
 
@@ -69,7 +69,7 @@ The code is built around the `state` data structure. It sends part of this over 
 reads it, and uses it to set lamps, set the elevator motor, and so on. The state is directly used by the algorithms
 for computing the optimal request for an elevator.
 
-We eventually needed some more data (for avoiding spammy key states) so we simply built a data structure containing
+We eventually needed some more data (to avoiding spamming key states) so we simply built a data structure containing
 the `state` structure in addition to a few other fields. This allowed us to keep our core algorithms exactly the same.
 
 
@@ -115,7 +115,7 @@ that everyone can explore on their own instead of having the cognitive overload 
 
 We didn't test enough. There is a tests directory that contains some tests but it seemed so tedious to write.
 Secondly, our tests wouldn't be perfectly pure since everything depended on `id` and `name`, which were generated
-randomly or loaded from a file. Our attempts at utilizing first-class modules (Units) failed as we dissatisfied
+randomly or loaded from a file. Our attempts at utilizing first-class modules (Units) failed as we were dissatisfied
 with the results.
 
 The tests also became big for algorithms that would take entire-states and computed something from them.
