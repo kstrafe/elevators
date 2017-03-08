@@ -164,7 +164,7 @@ Next time we should make it easy to add comments that get turned into documentat
 ## Conclusion ##
 
 I can't possibly enumerate all the little things we did right and wrong during this project but I think we definitely
-had a great team learned a lot from it. We've definitely leveled up as programmers.
+had a great team and learned a lot from it. We've definitely leveled up as programmers.
 
 We're proud of our work, which overall gave us many mental challenges to overcome. The solution has simple
 fault tolerance methods (even a monitor for restarting the program) in only about 634 lines of code.
