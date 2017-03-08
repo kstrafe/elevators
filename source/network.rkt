@@ -42,7 +42,7 @@
 ;; Internal helpers                                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-values (broadcast-port broadcast-sleep) (values 30073 0.04))
+(define-values (broadcast-port broadcast-sleep) (values 31249 0.04))
 
 ;; Turn lines into a list of strings
 (define (lines->list port) (let ([ip (read-line port)]) (if (eof-object? ip) empty (cons ip (lines->list port)))))

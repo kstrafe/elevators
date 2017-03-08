@@ -86,7 +86,7 @@ has arrived after main's sleep.
 
 1. Install Racket `https://racket-lang.org/download/`.
 2. In a terminal: `raco pkg install --skip-installed lens libuuid reloadable sha threading`.
-3. `git clone https://github.com/BourgondAries/elevators`.
+3. `git clone [REDACTED]`
 4. Install `gcc` if you haven't already (for compiling the driver).
 5. Optional: Install `dmd` (D compiler); only used by the simulator.
 
@@ -107,8 +107,7 @@ Generated files will be stored in `temporaries/`.
 
 ## Contributors
 
-* [BourgondAries](https://github.com/BourgondAries)
-* [dagerikhl](https://github.com/dagerikhl)
+[REDACTED]
 
 ## License
 GPL-3.0

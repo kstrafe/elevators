@@ -1,12 +1,12 @@
 # Postmortem: Moloch Asmodeus Rex #
 
-Group 73 was founded in January of 2017 as a working group consisting of [dagerikhl](https://github.com/dagerikhl) and [BourgondAries](https://github.com/BourgondAries).
+Group [REDACTED] was founded in January of 2017 as a working group consisting of [REDACTED].
 The goal of the group was to implement elevator control software that is fault-tolerant. Each elevator is
 connected to a machine that is connected to the same network. We were to implement the driving software
 such that all elevators would work together as well as preventing faults from occurring.
 
-We decided to use the Racket language. It's a mostly functional lisp. dagerikhl never touched lisp.
-bourgondaries had some experience with it. We started work early and worked consistently over the course
+We decided to use the Racket language. It's a mostly functional lisp. [REDACTED] never touched lisp.
+[REDACTED] had some experience with it. We started work early and worked consistently over the course
 of two months. Working from home as well as coming together once or twice per week.
 
 In early march that same year we completed our work. We wrote a little documentation and cleaned up the
