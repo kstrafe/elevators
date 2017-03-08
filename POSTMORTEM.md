@@ -151,6 +151,16 @@ We spent some time discussing coding conventions without any real style guide.
 
 Next time we ought to find a style guide and stick to it so we can avoid bikeshedding.
 
+### 5. Generating Live Documenation ###
+
+We should have generated live documentation like one normally does in Rust. This means you comment your code
+with code samples that are run whilst generating documentation in an HTML format. The documentation thus never
+expires because it's checked when generated. We could have used something like Scribble (specific to Racket)
+in order to generate documenation of our APIs and implementation. This would make it easier to read about
+a module and its interface.
+
+Next time we should make it easy to add comments that get turned into documentation using some tool.
+
 ## Conclusion ##
 
 I can't possibly enumerate all the little things we did right and wrong during this project but I think we definitely
