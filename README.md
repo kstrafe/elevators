@@ -19,12 +19,12 @@ good decisions. We arrived at the following data structure:
 ```
 (state (
 	id                  ; A UUID. It will be stored, so restarting will give you the same UUID. Reset it by clearing temporaries.
-	name                ; A human-readable name given to the elevator (to make communication and detection easier)
-	position            ; The last known position of the elevator (in-between floors has no position)
-	servicing-requests  ; The requests that an elevator is currently servicing
-	call-requests       ; The available call requests (buttons from outside the elevator) for all elevators
-	command-requests    ; The available command requests (buttons from inside the elevator), only for the elevator holding it
-	done-requests       ; The call requests that have been finished
+	name                ; A human-readable name given to the elevator (to make communication and detection easier).
+	position            ; The last known position of the elevator (in-between floors has no position).
+	servicing-requests  ; The requests that an elevator is currently servicing.
+	call-requests       ; The available call requests (buttons from outside the elevator) for all elevators.
+	command-requests    ; The available command requests (buttons from inside the elevator), only for the elevator holding it.
+	done-requests       ; The call requests that have been finished.
 	opening-time))      ; The current open state of the doors. Decrements until zero and then continues servicing floors.
 ```
 
@@ -84,17 +84,18 @@ has arrived after main's sleep.
 
 ## Installation
 
-1. Install Racket `https://racket-lang.org/download/`
-2. In a terminal: `raco pkg install --skip-installed lens libuuid reloadable sha threading`
-3. `git clone https://github.com/BourgondAries/elevators`
-4. Install `gcc` if you haven't already (for compiling the driver)
-5. Optional: Install `dmd` (D compiler); only used by the simulator
+1. Install Racket `https://racket-lang.org/download/`.
+2. In a terminal: `raco pkg install --skip-installed lens libuuid reloadable sha threading`.
+3. `git clone https://github.com/BourgondAries/elevators`.
+4. Install `gcc` if you haven't already (for compiling the driver).
+5. Optional: Install `dmd` (D compiler); only used by the simulator.
 
 ## Usage
 
-1. Run the simulator `sim_server.d`, or connect the machine to the lab equipment
-2. Change the `simulated` variable in `source/elevator-hardware/elevator-interface.rkt` to `#t` or `#f`
-3. Run: `./main.rkt` or `racket main.rkt`
+1. Run the simulator `sim_server.d`, or connect the machine to the lab equipment.
+2. Change the `simulated` variable in `source/elevator-hardware/elevator-interface.rkt` to `#t` or `#f`.
+3. Change the `floor-count` variable in `source/data-structures.rkt` to `9` for simulation or `4` for lab equipment.
+4. Run: `./main.rkt` or `racket main.rkt`.
 
 This is all that is needed to run the elevator control software.
 
