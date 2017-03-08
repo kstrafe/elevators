@@ -13,14 +13,14 @@
 ;; Calculate which call requests are available to pick.
 ;;
 ;; This algorithm checks if a call request is already being serviced by an elevator. If it is, it's not available.
-(define (compute-available-call-requests hash)
+(define (compute-available-call-requests elevators)
   (define other:servicing  (lens-compose state-servicing-requests-lens attributes-state-lens))
   (define other:call       (lens-compose state-call-requests-lens attributes-state-lens))
-  (let ([elevators (hash-values hash)])
+  (let ([elevators* (hash-values elevators)])
     (~>
-      (map (curry lens-view other:servicing) elevators)
+      (map (curry lens-view other:servicing) elevators*)
       flatten
-      (remove* _ (flatten (lens-view other:call (first elevators))))
+      (remove* _ (flatten (lens-view other:call (first elevators*))))
       (filter call-request? _)
       flatten)))
 
