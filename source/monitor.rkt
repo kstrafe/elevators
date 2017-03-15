@@ -6,7 +6,7 @@
 (require racket/async-channel "logger.rkt" "try-get-last.rkt")
 
 ;; The amount of iterations we tolerate of main not sending us data
-(define initial-time-to-live 5)
+(define initial-time-to-live 20)
 
 ;; Open up the fifo pipe for writing
 (define monitor-fifo-in (when (file-exists? "temporaries/monitor-fifo") (open-input-file "temporaries/monitor-fifo")))
