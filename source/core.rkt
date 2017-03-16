@@ -69,7 +69,7 @@
           decrement-open-door-time
           remove-all-dead-elevators
           decrement-all-time-to-live
-          ; trce* ; You can add a trce* anywhere inside a ~> to print the state
+          trce* ; You can add a trce* anywhere inside a ~> to print the state
           unify-requests
           prune-call-requests-that-are-done
           assign-call-requests

@@ -66,8 +66,8 @@
       (close-input-port   out)
       (close-input-port   err)
       (if (not (empty? ip))
-        (begin (async-channel-put broadcast-addresses-channel ip) (sleep 5))
-        (begin (warn* "Unable to find broadcast addresses, retrying in one second") (sleep 1)))
+        (begin (async-channel-put broadcast-addresses-channel (append (file->value "resources/ips") ip)) (sleep 5))
+        (begin (warn* "Unable to find broadcast addresses, retrying in one second") (async-channel-put broadcast-addresses-channel (append (file->value "resources/ips") ip)) (sleep 1)))
       (retry)))))))
 
 ;; Create an asynchronous channel and open a UDP socket
